@@ -1,0 +1,19 @@
+# Held-out task instances are NEVER committed (contamination defense). Only private seeds
+# (kept out of git entirely) regenerate them. Track the directory, not its contents.
+data/heldout/*
+!data/heldout/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Env / secrets
+.env
+*.local
+
+# OS
+.DS_Store

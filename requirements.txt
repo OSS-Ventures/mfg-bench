@@ -1,0 +1,9 @@
+# Keep this list short and pinned. Add a dep only when a unit needs it.
+pydantic==2.9.2
+jsonschema==4.23.0
+numpy==2.1.3
+pyyaml==6.0.2
+anthropic==0.39.0
+pytest==8.3.3
+# scipy — add only if an SPC/statistics unit needs it.
+# openai, google-generativeai — added with their adapters (unit 1.13).
