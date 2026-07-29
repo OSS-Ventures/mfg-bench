@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rubric criterion (Family D only)",
+  "type": "object",
+  "required": ["criterion", "axis", "weight", "binary", "positive_anchor", "negative_anchor"],
+  "additionalProperties": false,
+  "properties": {
+    "criterion": { "type": "string" },
+    "axis": { "type": "string" },
+    "weight": { "type": "number", "exclusiveMinimum": 0 },
+    "binary": { "const": true },
+    "positive_anchor": { "type": "string" },
+    "negative_anchor": { "type": "string" }
+  }
+}

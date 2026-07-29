@@ -1,0 +1,29 @@
+# Global config — everything reproducible from config + seed.
+harness_version: "0.1"
+
+paths:
+  public_data: "data/public"
+  heldout_data: "data/heldout"
+  results: "results"
+
+# Master seed for procedural generation. Per-task seeds derive from this + task index.
+seed: 42
+
+# Default scoring tolerances (tasks may override per record).
+tolerances:
+  numeric_absolute: 0.001
+  numeric_relative: 0.01
+
+# Model panel. Each entry maps to a thin adapter in harness/adapters/.
+# temperature 0 everywhere the provider allows — apples-to-apples comparison.
+models:
+  - name: "claude-opus-4-8"
+    adapter: "anthropic"
+    temperature: 0
+  # - name: "gpt-5"        # added in unit 1.13
+  #   adapter: "openai"
+  # - name: "gemini-latest"
+  #   adapter: "google"
+
+# Answer extraction: models must emit their final answer inside these tags.
+answer_tag: "answer"

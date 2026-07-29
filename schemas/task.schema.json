@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Task record",
+  "type": "object",
+  "required": [
+    "id", "family", "domain", "reasoning_tier", "answer_format",
+    "prompt", "context", "ground_truth", "scorer", "generator",
+    "seed", "difficulty", "created", "public"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "family": { "enum": ["computed", "source_grounded", "simulated", "rubric_judged"] },
+    "domain": {
+      "enum": [
+        "production_scheduling", "quality_problem_solving", "continuous_improvement",
+        "supply_chain_sop", "methods_industrialization", "cost_performance",
+        "compliance_interpretation", "artifact_interpretation", "ops_communication"
+      ]
+    },
+    "reasoning_tier": { "enum": ["L1", "L2", "L3", "L4", "L5"] },
+    "answer_format": {
+      "enum": ["numeric", "classification", "multiple_choice", "checklist", "structured", "simulated", "open_rubric"]
+    },
+    "prompt": { "type": "string" },
+    "context": { "type": "object" },
+    "ground_truth": {},
+    "scorer": { "type": "string" },
+    "generator": { "type": "string" },
+    "seed": { "type": "integer" },
+    "difficulty": { "enum": ["standard", "hard"] },
+    "source": { "type": ["string", "null"] },
+    "source_url": { "type": ["string", "null"] },
+    "created": { "type": "string" },
+    "public": { "type": "boolean" }
+  }
+}

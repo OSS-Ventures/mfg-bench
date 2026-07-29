@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Result record",
+  "type": "object",
+  "required": ["task_id", "model", "harness_version", "raw_response", "score", "created"],
+  "additionalProperties": false,
+  "properties": {
+    "task_id": { "type": "string" },
+    "model": { "type": "string" },
+    "harness_version": { "type": "string" },
+    "raw_response": { "type": "string" },
+    "parsed_answer": {},
+    "score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "latency_ms": { "type": ["integer", "null"] },
+    "trajectory": { "type": ["array", "null"] },
+    "parse_failure": { "type": "boolean" },
+    "created": { "type": "string" }
+  }
+}

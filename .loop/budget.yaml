@@ -1,0 +1,24 @@
+# Self-governed spend ledger for the autonomous build loop.
+#
+# There is no real-time "credits remaining" API exposed to a fired session, so the loop
+# governs itself with this file. Every firing reads it BEFORE doing any build work and exits
+# cleanly ("do nothing") if the budget is spent or the stop-date has passed.
+#
+# Edit this file to pause, resume, extend, or throttle the loop. Changes take effect on the
+# next firing (the loop reads it fresh each time).
+
+# Master switch. Set to false to pause the loop without deleting the Routine.
+enabled: true
+
+# Hard stop. The loop will not do build work on any date after this (YYYY-MM-DD).
+# Set by Renan at arm-time; extend as the build progresses.
+stop_date: "TBD"
+
+# Maximum build iterations that may run per calendar day (UTC). The Routine fires every 4h
+# (up to 6 fires/day); this caps how many of those fires actually build. Extra fires exit as
+# "skipped: budget". Keep <= fires/day.
+max_runs_per_day: 6
+
+# Rolling record the loop maintains so it can enforce max_runs_per_day. Format: date -> count.
+# The loop increments today's count when it starts a build unit (not when a guard makes it skip).
+runs_by_day: {}

@@ -1,0 +1,27 @@
+# Coverage plan: per-cell target task counts across the three axes.
+# Fill target counts in unit 1.11. Family targets (of v1 headline): A ~55%, B ~20%, C ~25%.
+
+axes:
+  domain:
+    - production_scheduling
+    - quality_problem_solving
+    - continuous_improvement
+    - supply_chain_sop
+    - methods_industrialization
+    - cost_performance
+    - compliance_interpretation
+    - artifact_interpretation
+    - ops_communication
+  reasoning_tier: [L1, L2, L3, L4, L5]
+  answer_format: [numeric, classification, multiple_choice, checklist, structured, simulated]
+
+family_targets:      # fraction of v1 headline set
+  computed: 0.55
+  source_grounded: 0.20
+  simulated: 0.25
+
+# Per-cell target counts (domain x tier x format). Populated in unit 1.11.
+targets: {}
+
+# Every domain ships a hard subset (calibrated so frontier models leave headroom).
+hard_subset_fraction: 0.2
