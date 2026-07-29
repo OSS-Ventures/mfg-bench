@@ -15,6 +15,7 @@ from typing import Any, Optional
 
 import yaml
 
+from generators.mrp import MRPGenerator
 from generators.oee import OEEGenerator
 from harness.adapters.anthropic import AnthropicModel
 from harness.adapters.base import Model
@@ -23,7 +24,7 @@ from scorers.numeric import NumericScorer
 
 ROOT = Path(__file__).resolve().parent.parent
 
-GENERATORS = {"oee": OEEGenerator}
+GENERATORS = {"oee": OEEGenerator, "mrp": MRPGenerator}
 SCORERS = {"numeric": NumericScorer}
 ADAPTERS = {"anthropic": AnthropicModel}
 

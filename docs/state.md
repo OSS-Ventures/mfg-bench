@@ -4,11 +4,31 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.1 — Numeric scorer hardening + multi-part support` — PR open, auto-merge enabled.
-- **Next unit (after 1.1 merges):** `1.2 — MRP explosion generator + scorer`.
+- **In flight:** `1.2 — MRP explosion generator + scorer` — PR open, auto-merge enabled.
+- **Next unit (after 1.2 merges):** `1.3 — Inventory policy generator + scorer`.
 - **Blockers:** none.
 
 ## Log
+
+### 2026-07-29 — Unit 1.2: MRP explosion generator + scorer
+- Added `generators/mrp.py`: a single-component, 4-period MRP time-phased net-requirements
+  generator (lot-for-lot, no safety stock). Given a finished-product demand schedule, a BOM
+  quantity-per, beginning on-hand inventory, scheduled receipts, and a supplier lead time, it
+  computes Gross Requirements (demand x qty-per), nets them period-by-period against on-hand +
+  scheduled receipts (carrying any surplus forward, flooring shortfall-covered on-hand at 0),
+  and derives the Planned Order Release period for period 4's receipt from the lead time
+  (`NUM_PERIODS - lead_time`). Ground truth is a 5-part `numeric` answer (4 net requirements +
+  1 release period), reusing the multi-part `scorers/numeric.py` scorer hardened in unit 1.1 —
+  no new scorer code needed.
+- Wired `mrp` into `harness/run.py`'s `GENERATORS` registry (`--generator mrp` now works
+  end-to-end alongside `oee`).
+- Tests: `tests/test_mrp.py` — 5 hand-verified net-requirement/release-period cases (worked by
+  hand from the generator's own context: demand x qty-per gross requirements, netted against
+  on-hand + scheduled receipts), plus an independent-recomputation sweep over 60 (seed,
+  difficulty) combinations, determinism, distinct-seeds, schema validation, non-negative net
+  requirements, and release-period-within-horizon checks. Added two end-to-end cases to
+  `tests/test_harness_run.py` exercising the multi-part MRP path (all-correct and
+  partial-credit) through the real harness. Full suite: 115 passed.
 
 ### 2026-07-29 — Unit 1.1: Numeric scorer hardening + multi-part support
 - Reconciled stale state: `0.1` had already merged to `main` (PR #4) in a prior firing but the
