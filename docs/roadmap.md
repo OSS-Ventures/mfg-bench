@@ -24,14 +24,14 @@ _Goal: one OEE task runs end-to-end from a clean clone and writes a valid result
 ## Phase 1 — Family A (Computed): minimum lovable + publishable
 _Build one generator+scorer unit at a time; test each scorer before moving on._
 
-- [~] **1.1 — Numeric scorer hardening + multi-part support.** Generalize `numeric` scorer for
+- [x] **1.1 — Numeric scorer hardening + multi-part support.** Generalize `numeric` scorer for
   multi-part answers (average parts) and relative tolerance. Robust `<answer>` parsing;
   parse-failures score 0 and are logged as a distinct category.
   **Acceptance:** unit tests cover single/multi-part, absolute/relative tolerance, and parse
   failure; parse-failure count is surfaced in results.
-- [~] **1.2 — MRP explosion generator + scorer.** Net requirements from BOM + on-hand + demand
+- [x] **1.2 — MRP explosion generator + scorer.** Net requirements from BOM + on-hand + demand
   + lead times. **Acceptance:** correct-by-construction; ≥5 hand-verified scorer tests.
-- [ ] **1.3 — Inventory policy generator + scorer.** EOQ, reorder point, safety stock from
+- [~] **1.3 — Inventory policy generator + scorer.** EOQ, reorder point, safety stock from
   demand distribution + lead time. **Acceptance:** as above.
 - [ ] **1.4 — SPC generator + scorer.** Control limits, Cp/Cpk/Pp/Ppk, out-of-control-rule
   detection from a data series. **Acceptance:** as above (may add `scipy` if needed).

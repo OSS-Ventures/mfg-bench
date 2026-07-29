@@ -4,6 +4,8 @@ Uses a fake Model (no network call) so this runs in CI without an API key; the r
 Anthropic adapter is exercised by `python -m harness.run --generator oee --seed <n> --model
 anthropic` when an ANTHROPIC_API_KEY is available.
 """
+import pytest
+
 from harness.adapters.base import Model, ModelResponse
 from harness.run import run
 from harness.validate import validate_result
@@ -62,3 +64,31 @@ def test_run_scores_partial_mrp_answer_as_fraction_correct():
     result = run("mrp", seed=1, model_name="anthropic", model=FakeModel(answer="0, 0, 0, 0, 3"))
     validate_result(result)
     assert result["score"] == 0.2
+
+
+def test_run_scores_multi_part_inventory_policy_task_end_to_end():
+    # seed=1, standard inventory_policy task's ground truth is [690.52, 18.49, 162.49] (see
+    # tests/test_inventory_policy.py).
+    result = run(
+        "inventory_policy",
+        seed=1,
+        model_name="anthropic",
+        model=FakeModel(answer="690.52, 18.49, 162.49"),
+    )
+    validate_result(result)
+    assert result["task_id"] == "compute.inventory_policy.000001"
+    assert result["parsed_answer"] == [690.52, 18.49, 162.49]
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_partial_inventory_policy_answer_as_fraction_correct():
+    # Only the first of 3 parts (EOQ = 690.52) is correct -> average score ~0.333.
+    result = run(
+        "inventory_policy",
+        seed=1,
+        model_name="anthropic",
+        model=FakeModel(answer="690.52, 0, 0"),
+    )
+    validate_result(result)
+    assert result["score"] == pytest.approx(1 / 3)
