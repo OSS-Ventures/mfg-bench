@@ -4,11 +4,34 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.2 — MRP explosion generator + scorer` — PR open, auto-merge enabled.
-- **Next unit (after 1.2 merges):** `1.3 — Inventory policy generator + scorer`.
+- **In flight:** `1.3 — Inventory policy generator + scorer` — PR open, auto-merge enabled.
+- **Next unit (after 1.3 merges):** `1.4 — SPC generator + scorer`.
 - **Blockers:** none.
 
 ## Log
+
+### 2026-07-29 — Unit 1.3: Inventory policy generator + scorer
+- Reconciled stale state: `1.1` (PR #6) and `1.2` (PR #8) had already merged to `main` in prior
+  firings but the roadmap checkboxes were left at `[~]` — fixed to `[x]` now.
+- Added `generators/inventory_policy.py`: a seeded, correct-by-construction continuous-review
+  (Q, R) inventory-policy generator. Given annual demand, ordering cost, unit cost (used to
+  derive a holding cost via a randomized holding rate), daily demand standard deviation,
+  supplier lead time, and a target cycle-service level, it computes the Economic Order
+  Quantity (`sqrt(2 x D x S / H)`), Safety Stock (`z x daily_demand_stdev x sqrt(lead_time)`),
+  and Reorder Point (`avg_daily_demand x lead_time + safety_stock`). The service-level z-value
+  comes from a small hardcoded textbook lookup table (`SERVICE_LEVEL_Z`) rather than a
+  scipy/normal-inverse-CDF call, keeping the dependency list unchanged. Ground truth is a
+  3-part `numeric` answer (EOQ, Safety Stock, Reorder Point) with relative tolerance, reusing
+  the multi-part `scorers/numeric.py` scorer from unit 1.1 — no new scorer code needed.
+- Wired `inventory_policy` into `harness/run.py`'s `GENERATORS` registry (`--generator
+  inventory_policy` now works end-to-end alongside `oee` and `mrp`).
+- Tests: `tests/test_inventory_policy.py` — 5 hand-verified EOQ/Safety-Stock/Reorder-Point
+  cases (worked by hand from the generator's own context via the standard (Q, R) formulas),
+  plus an independent-recomputation sweep over 60 (seed, difficulty) combinations, determinism,
+  distinct-seeds, schema validation, service-level/z consistency, and non-negative-value
+  checks. Added two end-to-end cases to `tests/test_harness_run.py` exercising the multi-part
+  inventory-policy path (all-correct and partial-credit) through the real harness. Full suite:
+  187 passed.
 
 ### 2026-07-29 — Unit 1.2: MRP explosion generator + scorer
 - Added `generators/mrp.py`: a single-component, 4-period MRP time-phased net-requirements
