@@ -11,7 +11,7 @@ Legend: `[ ]` todo · `[~]` in progress (PR open) · `[x]` done (merged).
 ## Phase 0 — Scaffolding & end-to-end skeleton
 _Goal: one OEE task runs end-to-end from a clean clone and writes a valid result record._
 
-- [~] **0.1 — OEE generator + numeric scorer (end-to-end).** Implement `generators/oee.py`
+- [x] **0.1 — OEE generator + numeric scorer (end-to-end).** Implement `generators/oee.py`
   (parameterized + seeded, correct-by-construction) and `scorers/numeric.py` (tolerance-based,
   absolute/relative). Wire one generated OEE task through generate → run → score → log using
   the existing `harness/run.py` skeleton and the Anthropic adapter.
@@ -24,7 +24,7 @@ _Goal: one OEE task runs end-to-end from a clean clone and writes a valid result
 ## Phase 1 — Family A (Computed): minimum lovable + publishable
 _Build one generator+scorer unit at a time; test each scorer before moving on._
 
-- [ ] **1.1 — Numeric scorer hardening + multi-part support.** Generalize `numeric` scorer for
+- [~] **1.1 — Numeric scorer hardening + multi-part support.** Generalize `numeric` scorer for
   multi-part answers (average parts) and relative tolerance. Robust `<answer>` parsing;
   parse-failures score 0 and are logged as a distinct category.
   **Acceptance:** unit tests cover single/multi-part, absolute/relative tolerance, and parse
