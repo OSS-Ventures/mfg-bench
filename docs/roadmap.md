@@ -11,7 +11,7 @@ Legend: `[ ]` todo · `[~]` in progress (PR open) · `[x]` done (merged).
 ## Phase 0 — Scaffolding & end-to-end skeleton
 _Goal: one OEE task runs end-to-end from a clean clone and writes a valid result record._
 
-- [ ] **0.1 — OEE generator + numeric scorer (end-to-end).** Implement `generators/oee.py`
+- [~] **0.1 — OEE generator + numeric scorer (end-to-end).** Implement `generators/oee.py`
   (parameterized + seeded, correct-by-construction) and `scorers/numeric.py` (tolerance-based,
   absolute/relative). Wire one generated OEE task through generate → run → score → log using
   the existing `harness/run.py` skeleton and the Anthropic adapter.

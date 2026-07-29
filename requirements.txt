@@ -4,6 +4,7 @@ jsonschema==4.23.0
 numpy==2.1.3
 pyyaml==6.0.2
 anthropic==0.39.0
+httpx==0.27.2  # anthropic 0.39.0's client predates httpx 0.28's removal of the `proxies` kwarg
 pytest==8.3.3
 # scipy — add only if an SPC/statistics unit needs it.
 # openai, google-generativeai — added with their adapters (unit 1.13).
