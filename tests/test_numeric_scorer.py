@@ -46,3 +46,58 @@ def test_none_answer_scores_zero():
 
 def test_string_numeric_answer_is_coerced():
     assert SCORER.score(_task(0.7594), "0.7594") == 1.0
+
+
+def test_bool_answer_scores_zero():
+    # bool is a subclass of int in Python; float(True) == 1.0 would otherwise silently "match".
+    assert SCORER.score(_task(1.0, tolerance=0.5), True) == 0.0
+
+
+def _multi_task(parts):
+    return {"ground_truth": {"parts": parts}}
+
+
+def test_multi_part_all_correct_scores_one():
+    parts = [
+        {"value": 10.0, "tolerance": 0.01, "tolerance_type": "absolute"},
+        {"value": 200.0, "tolerance": 0.02, "tolerance_type": "relative"},
+    ]
+    assert SCORER.score(_multi_task(parts), [10.005, 204.0]) == 1.0
+
+
+def test_multi_part_partial_correct_averages():
+    # part 1 correct (within 0.01), part 2 wrong (off by 50 with tolerance 4) -> avg 0.5.
+    parts = [
+        {"value": 10.0, "tolerance": 0.01, "tolerance_type": "absolute"},
+        {"value": 200.0, "tolerance": 0.02, "tolerance_type": "relative"},
+    ]
+    assert SCORER.score(_multi_task(parts), [10.005, 250.0]) == 0.5
+
+
+def test_multi_part_none_correct_scores_zero():
+    parts = [
+        {"value": 10.0, "tolerance": 0.01, "tolerance_type": "absolute"},
+        {"value": 200.0, "tolerance": 0.02, "tolerance_type": "relative"},
+    ]
+    assert SCORER.score(_multi_task(parts), [99.0, 1.0]) == 0.0
+
+
+def test_multi_part_wrong_answer_count_scores_zero():
+    parts = [
+        {"value": 10.0, "tolerance": 0.01, "tolerance_type": "absolute"},
+        {"value": 200.0, "tolerance": 0.02, "tolerance_type": "relative"},
+    ]
+    assert SCORER.score(_multi_task(parts), [10.0]) == 0.0
+
+
+def test_multi_part_non_list_answer_scores_zero():
+    parts = [{"value": 10.0, "tolerance": 0.01, "tolerance_type": "absolute"}]
+    assert SCORER.score(_multi_task(parts), 10.0) == 0.0
+
+
+def test_multi_part_non_numeric_element_scores_partial():
+    parts = [
+        {"value": 10.0, "tolerance": 0.01, "tolerance_type": "absolute"},
+        {"value": 200.0, "tolerance": 0.02, "tolerance_type": "relative"},
+    ]
+    assert SCORER.score(_multi_task(parts), [10.0, "not a number"]) == 0.5
