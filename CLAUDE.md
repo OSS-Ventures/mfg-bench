@@ -28,8 +28,11 @@ of work would make a model's opinion the arbiter of the headline score, it does 
   family grows, and check off the roadmap unit + append to `docs/state.md` when done.
 
 ## Git & authorship convention (applies to ALL pushes, loop or human)
-- **Commit author = Renan** (`renan@oss.ventures`). Set once per environment:
-  `git config user.name "Renan" && git config user.email "renan@oss.ventures"`.
+- **Writes go through the GitHub MCP tools (`mcp__github__*`), not `git push`.** In this
+  environment the git proxy is read-only and `git push` returns 403. The MCP tools are
+  authenticated as **Renan** (`renan-devil`, renan@oss.ventures), so commits pushed via
+  `mcp__github__push_files` are **authored by Renan automatically**. Local `git` is fine for
+  reads, staging, diffing, and running tests.
 - Every commit message ends with a `Co-Authored-By: Claude` trailer (Claude is the secondary
   author). Result: Renan primary, Claude co-author.
 - **Never push to `main` directly.** Work on a `claude/<unit-slug>` branch, open a PR that

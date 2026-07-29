@@ -10,10 +10,18 @@ green state. Work on the repository's default branch's latest state; never push 
 
 Execute these steps in order. Stop early (cleanly) whenever a guard says so.
 
+> **Push mechanism (important, environment-specific).** In this environment `git push` is
+> **read-only via the git proxy and returns 403 on push.** All writes to GitHub — creating
+> branches, committing files, opening issues/PRs, merging — go through the **GitHub MCP tools**
+> (`mcp__github__*`), which are authenticated as **Renan** (`renan-devil`, renan@oss.ventures).
+> That means commits pushed via `mcp__github__push_files` are **authored by Renan
+> automatically**; you only add the `Co-Authored-By: Claude` trailer in the commit message.
+> Use local `git` freely for reads, staging, diffing, and running tests — just don't rely on
+> `git push`.
+
 ## Step 0 — Load context
-Read, in this order: `GOALS.md`, `CLAUDE.md`, `docs/roadmap.md`, `docs/state.md`. Set the git
-author for this environment: `git config user.name "Renan" && git config user.email
-"renan@oss.ventures"`. `git fetch origin` and check out the latest default branch.
+Read, in this order: `GOALS.md`, `CLAUDE.md`, `docs/roadmap.md`, `docs/state.md`. `git fetch
+origin` (reads work) and check out the latest default branch.
 
 ## Step 1 — Guard checks (halt cleanly if any trip)
 1. **Budget guard.** Read `.loop/budget.yaml`. Compute today's date. If `runs_today >=
@@ -52,13 +60,15 @@ Iterate within this session until green (reasonable cap). If you cannot get it g
 you have to the branch, open a **draft** PR describing the blocker, note it in `docs/state.md`,
 and exit — the next firing (or Renan) will pick it up. Never merge red.
 
-## Step 6 — Commit, push, PR
+## Step 6 — Commit, push, PR (via GitHub MCP)
 - Tick the unit's checkbox in `docs/roadmap.md` (`[ ]` → `[~]`) and append an entry to
   `docs/state.md`.
-- Commit with author = Renan and a `Co-Authored-By: Claude` trailer (see footer below).
-- Push `-u origin claude/<unit-slug>` (retry with exponential backoff on network errors).
-- Open a PR that **closes** the issue (`Closes #N`), with a body describing what was built and
-  how the acceptance criteria are met. Enable auto-merge so it merges when CI is green.
+- Create the branch with `mcp__github__create_branch` (from the default branch), then push all
+  changed files in ONE commit with `mcp__github__push_files`. The commit message ends with the
+  `Co-Authored-By: Claude` trailer (see footer below); the author is Renan automatically.
+- Open a PR with `mcp__github__create_pull_request` that **closes** the issue (`Closes #N`),
+  with a body describing what was built and how the acceptance criteria are met.
+- Enable auto-merge with `mcp__github__enable_pr_auto_merge` so it merges when CI is green.
 
 ## Step 7 — Finalize state
 Once the PR is set to auto-merge (or merged), the unit is `[~]`. A later firing's concurrency
