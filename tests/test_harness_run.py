@@ -45,3 +45,20 @@ def test_run_flags_parse_failure_when_answer_tag_missing():
     assert result["parse_failure"] is True
     assert result["parsed_answer"] is None
     assert result["score"] == 0.0
+
+
+def test_run_scores_multi_part_mrp_task_end_to_end():
+    # seed=1, standard MRP task's ground truth is [80, 83, 142, 136, 3] (see tests/test_mrp.py).
+    result = run("mrp", seed=1, model_name="anthropic", model=FakeModel(answer="80, 83, 142, 136, 3"))
+    validate_result(result)
+    assert result["task_id"] == "compute.mrp.000001"
+    assert result["parsed_answer"] == [80.0, 83.0, 142.0, 136.0, 3.0]
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_partial_mrp_answer_as_fraction_correct():
+    # Only the last of 5 parts (release period = 3) is correct -> average score 0.2.
+    result = run("mrp", seed=1, model_name="anthropic", model=FakeModel(answer="0, 0, 0, 0, 3"))
+    validate_result(result)
+    assert result["score"] == 0.2
