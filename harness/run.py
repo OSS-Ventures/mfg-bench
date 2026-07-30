@@ -18,6 +18,7 @@ import yaml
 from generators.inventory_policy import InventoryPolicyGenerator
 from generators.mrp import MRPGenerator
 from generators.oee import OEEGenerator
+from generators.spc import SPCGenerator
 from harness.adapters.anthropic import AnthropicModel
 from harness.adapters.base import Model
 from harness.validate import validate_result, validate_task
@@ -25,7 +26,12 @@ from scorers.numeric import NumericScorer
 
 ROOT = Path(__file__).resolve().parent.parent
 
-GENERATORS = {"oee": OEEGenerator, "mrp": MRPGenerator, "inventory_policy": InventoryPolicyGenerator}
+GENERATORS = {
+    "oee": OEEGenerator,
+    "mrp": MRPGenerator,
+    "inventory_policy": InventoryPolicyGenerator,
+    "spc": SPCGenerator,
+}
 SCORERS = {"numeric": NumericScorer}
 ADAPTERS = {"anthropic": AnthropicModel}
 

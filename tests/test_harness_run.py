@@ -92,3 +92,31 @@ def test_run_scores_partial_inventory_policy_answer_as_fraction_correct():
     )
     validate_result(result)
     assert result["score"] == pytest.approx(1 / 3)
+
+
+def test_run_scores_multi_part_spc_task_end_to_end():
+    # seed=1, standard SPC task's ground truth is [154.71, 145.02, 1.22, 1.21, 1.35, 1.34, 0.0]
+    # (see tests/test_spc.py).
+    result = run(
+        "spc",
+        seed=1,
+        model_name="anthropic",
+        model=FakeModel(answer="154.71, 145.02, 1.22, 1.21, 1.35, 1.34, 0.0"),
+    )
+    validate_result(result)
+    assert result["task_id"] == "compute.spc.000001"
+    assert result["parsed_answer"] == [154.71, 145.02, 1.22, 1.21, 1.35, 1.34, 0.0]
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_partial_spc_answer_as_fraction_correct():
+    # Only 2 of 7 parts (UCL, LCL) correct -> average score 2/7.
+    result = run(
+        "spc",
+        seed=1,
+        model_name="anthropic",
+        model=FakeModel(answer="154.71, 145.02, 0, 0, 0, 0, 5"),
+    )
+    validate_result(result)
+    assert result["score"] == pytest.approx(2 / 7)

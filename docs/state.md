@@ -4,11 +4,42 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.3 — Inventory policy generator + scorer` — PR open, auto-merge enabled.
-- **Next unit (after 1.3 merges):** `1.4 — SPC generator + scorer`.
+- **In flight:** `1.4 — SPC generator + scorer` — PR open, auto-merge enabled.
+- **Next unit (after 1.4 merges):** `1.5 — Scheduling generator + scorer`.
 - **Blockers:** none.
 
 ## Log
+
+### 2026-07-30 — Unit 1.4: SPC generator + scorer
+- Reconciled stale state: `1.3` (PR #10) had already merged to `main` in a prior firing but the
+  roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- Added `generators/spc.py`: a seeded, correct-by-construction X-bar/R statistical-process-
+  control generator. Given a series of subgroup measurements (subgroup size drawn from a small
+  set per difficulty, 15 subgroups for `standard` / 20 for `hard`, generated from a randomized
+  true mean/sigma with an occasional injected special-cause shift on the last subgroup), spec
+  limits (USL/LSL), and control-chart constants (A2, d2, from a small hardcoded textbook lookup
+  table `SPC_CONSTANTS` keyed by subgroup size — same approach as unit 1.3's service-level
+  z-table, so no scipy dependency is needed), it computes: X-bar chart control limits (UCL,
+  LCL) from the grand mean and average subgroup range; process capability (Cp, Cpk) from the
+  within-subgroup sigma estimate (Rbar / d2); process performance (Pp, Ppk) from the overall
+  sample standard deviation of all pooled individual measurements; and the out-of-control count
+  (subgroups whose mean falls outside the X-bar limits, Western Electric Rule 1). All 7 values
+  are computed directly from the generated data series by the generator itself — the model
+  never supplies or influences ground truth.
+- Ground truth is a 7-part `numeric` answer (UCL, LCL, Cp, Cpk, Pp, Ppk, out-of-control count),
+  reusing the multi-part `scorers/numeric.py` scorer hardened in unit 1.1 — no new scorer code
+  needed.
+- Wired `spc` into `harness/run.py`'s `GENERATORS` registry (`--generator spc` now works
+  end-to-end alongside `oee`, `mrp`, and `inventory_policy`).
+- Tests: `tests/test_spc.py` — 5 hand-verified cases (control limits/Cp/Cpk/Pp/Ppk/out-of-
+  control-count computed from the generator's own context via the standard X-bar/R formulas),
+  plus an independent-recomputation sweep over 60 (seed, difficulty) combinations using a
+  separately-written formula implementation (plain `sum()`/`len()` arithmetic rather than the
+  `statistics` module the generator uses, so the sweep genuinely cross-checks the formulas
+  rather than re-calling the same code), determinism, distinct-seeds, schema validation,
+  control-chart-constant consistency, Cp-always-positive, and out-of-control-count-bounds
+  checks. Added two end-to-end cases to `tests/test_harness_run.py` exercising the multi-part
+  SPC path (all-correct and partial-credit) through the real harness. Full suite: 260 passed.
 
 ### 2026-07-29 — Unit 1.3: Inventory policy generator + scorer
 - Reconciled stale state: `1.1` (PR #6) and `1.2` (PR #8) had already merged to `main` in prior
