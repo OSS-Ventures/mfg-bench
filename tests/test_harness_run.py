@@ -120,3 +120,20 @@ def test_run_scores_partial_spc_answer_as_fraction_correct():
     )
     validate_result(result)
     assert result["score"] == pytest.approx(2 / 7)
+
+
+def test_run_scores_scheduling_task_end_to_end():
+    # seed=8, standard scheduling task's optimal total tardiness is 5.0 (see test_scheduling.py).
+    result = run("scheduling", seed=8, model_name="anthropic", model=FakeModel(answer="5"))
+    validate_result(result)
+    assert result["task_id"] == "compute.scheduling.000008"
+    assert result["parsed_answer"] == 5.0
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_zero_on_wrong_scheduling_answer():
+    # seed=12, hard scheduling task's optimal total weighted tardiness is 43.0.
+    result = run("scheduling", seed=12, model_name="anthropic", model=FakeModel(answer="0"))
+    validate_result(result)
+    assert result["score"] == 0.0

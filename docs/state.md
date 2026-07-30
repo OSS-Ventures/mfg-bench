@@ -4,11 +4,40 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.4 — SPC generator + scorer` — PR open, auto-merge enabled.
-- **Next unit (after 1.4 merges):** `1.5 — Scheduling generator + scorer`.
+- **In flight:** `1.5 — Scheduling generator + scorer` — PR open, auto-merge enabled.
+- **Next unit (after 1.5 merges):** `1.6 — TOC / bottleneck generator + scorer`.
 - **Blockers:** none.
 
 ## Log
+
+### 2026-07-30 — Unit 1.5: Scheduling generator + scorer
+- Reconciled stale state: `1.4` (PR #12) had already merged to `main` in a prior firing but the
+  roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- Added `generators/scheduling.py`: a seeded, correct-by-construction single-machine job
+  sequencing generator. Given `n` jobs (5 for `standard`, unweighted; 6 for `hard`, with a
+  per-job priority weight), each with a processing time and a due date, all released at time 0
+  with no preemption and no idle time, the generator computes the ground truth by exhaustively
+  searching every one of the `n!` possible processing sequences (`itertools.permutations`) and
+  taking the minimum total (weighted) tardiness achieved — `n` is kept small enough (120 or 720
+  orderings) that the exhaustive search is exact and fast, so the reported "optimal" is provably
+  correct rather than a heuristic or a model's opinion. Ground truth is a single-part `numeric`
+  answer, reusing `scorers/numeric.py` — no new scorer code needed.
+- Wired `scheduling` into `harness/run.py`'s `GENERATORS` registry (`--generator scheduling` now
+  works end-to-end alongside `oee`, `mrp`, `inventory_policy`, and `spc`).
+- Tests: `tests/test_scheduling.py` — since minimum-total-tardiness has no closed-form formula,
+  "hand-verified" here means 5 small (n=3, 6-orderings-enumerable-by-hand) job instances with
+  every one of the 6 orderings' completion times / tardiness / weighted tardiness worked out by
+  hand in comments and checked directly against `SchedulingGenerator._total_tardiness` (the
+  exact function `generate()` uses internally) — 2 unweighted, 2 weighted, 1 all-zero-tardiness
+  case. The generator's actual seeded output (5/6 jobs) is then checked with an independent
+  recomputation sweep over 60 (seed, difficulty) combinations using a *separately written*
+  brute-force implementation (recursive DFS tracking running completion time, rather than the
+  generator's `itertools.permutations` + flat list-comprehension) so the sweep genuinely
+  cross-checks the search rather than re-calling the same code. Also covers determinism,
+  distinct-seeds, schema validation, job-count/weight-range-per-difficulty, and
+  optimal-tardiness-is-never-negative checks. Added two end-to-end cases to
+  `tests/test_harness_run.py` exercising the single-part scheduling path (correct and wrong
+  answer) through the real harness. Full suite: 333 passed.
 
 ### 2026-07-30 — Unit 1.4: SPC generator + scorer
 - Reconciled stale state: `1.3` (PR #10) had already merged to `main` in a prior firing but the

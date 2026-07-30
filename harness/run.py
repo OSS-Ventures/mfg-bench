@@ -18,6 +18,7 @@ import yaml
 from generators.inventory_policy import InventoryPolicyGenerator
 from generators.mrp import MRPGenerator
 from generators.oee import OEEGenerator
+from generators.scheduling import SchedulingGenerator
 from generators.spc import SPCGenerator
 from harness.adapters.anthropic import AnthropicModel
 from harness.adapters.base import Model
@@ -31,6 +32,7 @@ GENERATORS = {
     "mrp": MRPGenerator,
     "inventory_policy": InventoryPolicyGenerator,
     "spc": SPCGenerator,
+    "scheduling": SchedulingGenerator,
 }
 SCORERS = {"numeric": NumericScorer}
 ADAPTERS = {"anthropic": AnthropicModel}
