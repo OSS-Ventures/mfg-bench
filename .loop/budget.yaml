@@ -21,4 +21,4 @@ max_runs_per_day: 6
 
 # Rolling record the loop maintains so it can enforce max_runs_per_day. Format: date -> count.
 # The loop increments today's count when it starts a build unit (not when a guard makes it skip).
-runs_by_day: {"2026-07-29": 4}
+runs_by_day: {"2026-07-29": 4, "2026-07-30": 1}
