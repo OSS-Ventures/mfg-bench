@@ -16,7 +16,7 @@ stop_date: "2026-08-05"
 
 # Maximum build iterations that may run per calendar day (UTC). The Routine fires every 4h
 # (up to 6 fires/day); this caps how many of those fires actually build. Extra fires exit as
-# "skipped: budget".
+# "skipped: budget". Keep <= fires/day.
 max_runs_per_day: 6
 
 # Rolling record the loop maintains so it can enforce max_runs_per_day. Format: date -> count.
