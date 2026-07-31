@@ -18,6 +18,7 @@ import yaml
 from generators.inventory_policy import InventoryPolicyGenerator
 from generators.mrp import MRPGenerator
 from generators.oee import OEEGenerator
+from generators.quality_economics import QualityEconomicsGenerator
 from generators.scheduling import SchedulingGenerator
 from generators.spc import SPCGenerator
 from generators.toc import TOCGenerator
@@ -35,6 +36,7 @@ GENERATORS = {
     "spc": SPCGenerator,
     "scheduling": SchedulingGenerator,
     "toc": TOCGenerator,
+    "quality_economics": QualityEconomicsGenerator,
 }
 SCORERS = {"numeric": NumericScorer}
 ADAPTERS = {"anthropic": AnthropicModel}
