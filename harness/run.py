@@ -20,6 +20,7 @@ from generators.mrp import MRPGenerator
 from generators.oee import OEEGenerator
 from generators.scheduling import SchedulingGenerator
 from generators.spc import SPCGenerator
+from generators.toc import TOCGenerator
 from harness.adapters.anthropic import AnthropicModel
 from harness.adapters.base import Model
 from harness.validate import validate_result, validate_task
@@ -33,6 +34,7 @@ GENERATORS = {
     "inventory_policy": InventoryPolicyGenerator,
     "spc": SPCGenerator,
     "scheduling": SchedulingGenerator,
+    "toc": TOCGenerator,
 }
 SCORERS = {"numeric": NumericScorer}
 ADAPTERS = {"anthropic": AnthropicModel}
