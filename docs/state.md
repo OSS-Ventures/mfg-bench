@@ -4,11 +4,47 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.6 — TOC / bottleneck generator + scorer` — PR open, auto-merge enabled.
-- **Next unit (after 1.6 merges):** `1.7 — Quality economics generator + scorer`.
+- **In flight:** `1.7 — Quality economics generator + scorer` — PR open, auto-merge enabled.
+- **Next unit (after 1.7 merges):** `1.8 — FMEA arithmetic generator + scorer`.
 - **Blockers:** none.
 
 ## Log
+
+### 2026-07-31 — Unit 1.7: Quality economics generator + scorer
+- Reconciled stale state: `1.6` (PR #16) had already merged to `main` in a prior firing but the
+  roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- Added `generators/quality_economics.py`: a seeded, correct-by-construction quality-economics
+  generator. Given a serial process of workstations (3 for `standard`, 4 for `hard`), a starting
+  unit count, and each station's scrap rate, rework rate, and per-unit scrap/rework cost, it
+  computes each station's First-Pass Yield (`1 - scrap_rate - rework_rate`), the average FPY
+  across stations, the Rolled Throughput Yield (the product of the per-station FPYs — the
+  fraction of starting units that would pass every station right first time with no rework
+  anywhere), and the Cost of Poor Quality (total scrap cost + total rework cost, accumulated as
+  units flow station to station — only scrapped units leave the process; reworked units continue
+  at a cost). Ground truth is a 5-part `numeric` answer (avg FPY %, RTY %, total scrap cost,
+  total rework cost, COPQ), reusing the multi-part `scorers/numeric.py` scorer from unit 1.1 — no
+  new scorer code needed.
+- Wired `quality_economics` into `harness/run.py`'s `GENERATORS` registry (`--generator
+  quality_economics` now works end-to-end alongside `oee`, `mrp`, `inventory_policy`, `spc`,
+  `scheduling`, and `toc`).
+- Tests: `tests/test_quality_economics.py` — 5 hand-verified avg-FPY/RTY/scrap-cost/rework-cost/
+  COPQ cases (worked by hand from the generator's own context via the station-by-station flow:
+  scrapped = units_in x scrap_rate, reworked = units_in x rework_rate, fpy = 1 - scrap_rate -
+  rework_rate, units_in x= (1 - scrap_rate) for the next station), plus an independent-
+  recomputation sweep over 60 (seed, difficulty) combinations using a *separately derived*
+  formula (FPY as good/units_in, a division, rather than the generator's 1 - rates subtraction)
+  so the sweep genuinely cross-checks the arithmetic rather than re-calling the same code. Also
+  covers determinism, distinct-seeds, schema validation, station-count-per-difficulty, FPY/RTY-
+  within-(0,100]%, RTY-never-exceeds-average-FPY, and costs-never-negative checks. Note: dropped
+  an initially-planned "COPQ == round(scrap_cost + rework_cost, 2)" assertion after discovering
+  it fails on ~20% of seeds — COPQ is (correctly) computed from the *unrounded* running totals,
+  so it can differ from summing the already-rounded, independently-displayed scrap/rework parts
+  by a cent; this is expected floating-point rounding behavior, not a generator bug, and is
+  already covered correctly by the recomputation sweep (which mirrors the unrounded-totals
+  order of operations). Added two end-to-end cases to `tests/test_harness_run.py` exercising the
+  multi-part quality-economics path (all-correct and partial-credit) through the real harness.
+  Full suite: 481 passed. Swept 400 (seed, difficulty) generated tasks against
+  `schemas/task.schema.json` — all valid.
 
 ### 2026-07-31 — Unit 1.6: TOC / bottleneck generator + scorer
 - Reconciled stale state: `1.5` (PR #14) had already merged to `main` in a prior firing but the

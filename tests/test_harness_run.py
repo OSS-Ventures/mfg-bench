@@ -154,3 +154,31 @@ def test_run_scores_partial_toc_answer_as_fraction_correct():
     result = run("toc", seed=1, model_name="anthropic", model=FakeModel(answer="4, 0, 0"))
     validate_result(result)
     assert result["score"] == pytest.approx(1 / 3)
+
+
+def test_run_scores_multi_part_quality_economics_task_end_to_end():
+    # seed=1, standard quality_economics task's ground truth is
+    # [90.0, 72.84, 3063.31, 2960.55, 6023.86] (see tests/test_quality_economics.py).
+    result = run(
+        "quality_economics",
+        seed=1,
+        model_name="anthropic",
+        model=FakeModel(answer="90.0, 72.84, 3063.31, 2960.55, 6023.86"),
+    )
+    validate_result(result)
+    assert result["task_id"] == "compute.quality_economics.000001"
+    assert result["parsed_answer"] == [90.0, 72.84, 3063.31, 2960.55, 6023.86]
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_partial_quality_economics_answer_as_fraction_correct():
+    # Only the first 2 of 5 parts (average FPY, RTY) are correct -> average score 2/5.
+    result = run(
+        "quality_economics",
+        seed=1,
+        model_name="anthropic",
+        model=FakeModel(answer="90.0, 72.84, 0, 0, 0"),
+    )
+    validate_result(result)
+    assert result["score"] == pytest.approx(2 / 5)
