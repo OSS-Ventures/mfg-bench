@@ -4,11 +4,40 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.5 — Scheduling generator + scorer` — PR open, auto-merge enabled.
-- **Next unit (after 1.5 merges):** `1.6 — TOC / bottleneck generator + scorer`.
+- **In flight:** `1.6 — TOC / bottleneck generator + scorer` — PR open, auto-merge enabled.
+- **Next unit (after 1.6 merges):** `1.7 — Quality economics generator + scorer`.
 - **Blockers:** none.
 
 ## Log
+
+### 2026-07-31 — Unit 1.6: TOC / bottleneck generator + scorer
+- Reconciled stale state: `1.5` (PR #14) had already merged to `main` in a prior firing but the
+  roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- Added `generators/toc.py`: a seeded, correct-by-construction Theory-of-Constraints
+  bottleneck/throughput generator. Given a serial production line of workstations (4 for
+  `standard`, 5 for `hard`), each with a per-unit task time and a number of identical parallel
+  machines, it computes each station's capacity in units/hour
+  (`num_machines * 60 / task_time_min`), identifies the bottleneck as the station with the
+  lowest capacity (ties broken toward the earliest station in the sequence, matching Python's
+  `min()` first-occurrence semantics), and derives system throughput (the bottleneck's own
+  capacity, since a serial line can never produce faster than its slowest station) and expected
+  output over one full shift (throughput x hours/day). Ground truth is a 3-part `numeric`
+  answer (bottleneck station number, throughput units/hour, shift output), reusing the
+  multi-part `scorers/numeric.py` scorer from unit 1.1 — no new scorer code needed.
+- Wired `toc` into `harness/run.py`'s `GENERATORS` registry (`--generator toc` now works
+  end-to-end alongside `oee`, `mrp`, `inventory_policy`, `spc`, and `scheduling`).
+- Tests: `tests/test_toc.py` — 5 hand-verified bottleneck/throughput/shift-output cases (station
+  capacities worked out by hand from the generator's own context via
+  `capacity = num_machines * 60 / task_time_min`, then argmin + multiply by hours/day), plus an
+  independent-recomputation sweep over 60 (seed, difficulty) combinations using a *separately
+  written* running-min loop (rather than the generator's `min(range(...), key=...)`), so the
+  sweep genuinely cross-checks the argmin rather than re-calling the same code. Also covers
+  determinism, distinct-seeds, schema validation, station-count-per-difficulty,
+  bottleneck-within-bounds, throughput/shift-output-always-positive, and
+  throughput-never-exceeds-any-station-capacity checks. Added two end-to-end cases to
+  `tests/test_harness_run.py` exercising the multi-part TOC path (all-correct and
+  partial-credit) through the real harness. Full suite: 407 passed. Swept 400 (seed,
+  difficulty) generated tasks against `schemas/task.schema.json` — all valid.
 
 ### 2026-07-30 — Unit 1.5: Scheduling generator + scorer
 - Reconciled stale state: `1.4` (PR #12) had already merged to `main` in a prior firing but the

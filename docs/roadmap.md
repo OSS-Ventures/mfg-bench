@@ -35,10 +35,10 @@ _Build one generator+scorer unit at a time; test each scorer before moving on._
   demand distribution + lead time. **Acceptance:** as above.
 - [x] **1.4 — SPC generator + scorer.** Control limits, Cp/Cpk/Pp/Ppk, out-of-control-rule
   detection from a data series. **Acceptance:** as above (may add `scipy` if needed).
-- [~] **1.5 — Scheduling generator + scorer.** Makespan / total tardiness for a sequence;
+- [x] **1.5 — Scheduling generator + scorer.** Makespan / total tardiness for a sequence;
   optimal only for instances small enough to solve exactly. **Acceptance:** "optimal" is
   provably correct by exhaustive/exact solve; ≥5 hand-verified tests.
-- [ ] **1.6 — TOC / bottleneck generator + scorer.** Bottleneck identification, throughput.
+- [~] **1.6 — TOC / bottleneck generator + scorer.** Bottleneck identification, throughput.
 - [ ] **1.7 — Quality economics generator + scorer.** COPQ, scrap/rework cost, first-pass
   yield, rolled throughput yield.
 - [ ] **1.8 — FMEA arithmetic generator + scorer.** RPN = S×O×D, prioritization.

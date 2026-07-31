@@ -137,3 +137,20 @@ def test_run_scores_zero_on_wrong_scheduling_answer():
     result = run("scheduling", seed=12, model_name="anthropic", model=FakeModel(answer="0"))
     validate_result(result)
     assert result["score"] == 0.0
+
+
+def test_run_scores_multi_part_toc_task_end_to_end():
+    # seed=1, standard TOC task's ground truth is [4.0, 6.67, 60.0] (see tests/test_toc.py).
+    result = run("toc", seed=1, model_name="anthropic", model=FakeModel(answer="4, 6.67, 60.0"))
+    validate_result(result)
+    assert result["task_id"] == "compute.toc.000001"
+    assert result["parsed_answer"] == [4.0, 6.67, 60.0]
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_partial_toc_answer_as_fraction_correct():
+    # Only the first of 3 parts (bottleneck station = 4) is correct -> average score 1/3.
+    result = run("toc", seed=1, model_name="anthropic", model=FakeModel(answer="4, 0, 0"))
+    validate_result(result)
+    assert result["score"] == pytest.approx(1 / 3)
