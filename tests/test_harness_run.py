@@ -182,3 +182,26 @@ def test_run_scores_partial_quality_economics_answer_as_fraction_correct():
     )
     validate_result(result)
     assert result["score"] == pytest.approx(2 / 5)
+
+
+def test_run_scores_multi_part_fmea_task_end_to_end():
+    # seed=1, standard FMEA task's ground truth is [60.0, 80.0, 448.0, 64.0, 3.0, 1.0]
+    # (see tests/test_fmea.py).
+    result = run(
+        "fmea", seed=1, model_name="anthropic", model=FakeModel(answer="60, 80, 448, 64, 3, 1")
+    )
+    validate_result(result)
+    assert result["task_id"] == "compute.fmea.000001"
+    assert result["parsed_answer"] == [60.0, 80.0, 448.0, 64.0, 3.0, 1.0]
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_partial_fmea_answer_as_fraction_correct():
+    # Only the top-priority failure mode (3) and count-above-threshold (1) parts are correct
+    # -> average score 2/6.
+    result = run(
+        "fmea", seed=1, model_name="anthropic", model=FakeModel(answer="0, 0, 0, 0, 3, 1")
+    )
+    validate_result(result)
+    assert result["score"] == pytest.approx(2 / 6)

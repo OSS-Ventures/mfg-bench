@@ -15,6 +15,7 @@ from typing import Any, Optional
 
 import yaml
 
+from generators.fmea import FMEAGenerator
 from generators.inventory_policy import InventoryPolicyGenerator
 from generators.mrp import MRPGenerator
 from generators.oee import OEEGenerator
@@ -37,6 +38,7 @@ GENERATORS = {
     "scheduling": SchedulingGenerator,
     "toc": TOCGenerator,
     "quality_economics": QualityEconomicsGenerator,
+    "fmea": FMEAGenerator,
 }
 SCORERS = {"numeric": NumericScorer}
 ADAPTERS = {"anthropic": AnthropicModel}
