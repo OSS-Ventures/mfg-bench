@@ -39,9 +39,9 @@ _Build one generator+scorer unit at a time; test each scorer before moving on._
   optimal only for instances small enough to solve exactly. **Acceptance:** "optimal" is
   provably correct by exhaustive/exact solve; ≥5 hand-verified tests.
 - [x] **1.6 — TOC / bottleneck generator + scorer.** Bottleneck identification, throughput.
-- [~] **1.7 — Quality economics generator + scorer.** COPQ, scrap/rework cost, first-pass
+- [x] **1.7 — Quality economics generator + scorer.** COPQ, scrap/rework cost, first-pass
   yield, rolled throughput yield.
-- [ ] **1.8 — FMEA arithmetic generator + scorer.** RPN = S×O×D, prioritization.
+- [~] **1.8 — FMEA arithmetic generator + scorer.** RPN = S×O×D, prioritization.
 - [ ] **1.9 — Standard-cost variance generator + scorer.** Price/usage/efficiency variances.
 - [ ] **1.10 — classification / checklist scorers.** Exact/set match and per-item fraction
   (report fraction + all-or-nothing). **Acceptance:** unit-tested.

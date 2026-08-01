@@ -4,11 +4,41 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.7 — Quality economics generator + scorer` — PR open, auto-merge enabled.
-- **Next unit (after 1.7 merges):** `1.8 — FMEA arithmetic generator + scorer`.
+- **In flight:** `1.8 — FMEA arithmetic generator + scorer` — PR open, auto-merge enabled.
+- **Next unit (after 1.8 merges):** `1.9 — Standard-cost variance generator + scorer`.
 - **Blockers:** none.
 
 ## Log
+
+### 2026-08-01 — Unit 1.8: FMEA arithmetic generator + scorer
+- Reconciled stale state: `1.7` (PR #18) had already merged to `main` in a prior firing but the
+  roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- Added `generators/fmea.py`: a seeded, correct-by-construction FMEA (Failure Mode and Effects
+  Analysis) arithmetic generator. Given a set of failure modes (4 for `standard`, 5 for `hard`),
+  each rated on the standard 1-10 Severity/Occurrence/Detection scales, it computes each failure
+  mode's Risk Priority Number (`RPN = severity x occurrence x detection`), the top-priority
+  failure mode (the one with the highest RPN — ties go to the earliest-listed one, matching
+  Python's `max()` first-occurrence semantics), and how many failure modes meet or exceed a
+  fixed project action threshold (`RPN >= 100`, stated in the prompt as a project-specific
+  policy, not a claimed universal AIAG standard — S/O/D *scale interpretation* reasoning is the
+  separate Family B task, unit 3.3). Ground truth is an `N+2`-part `numeric` answer (RPN per
+  failure mode, top-priority failure mode number, count above threshold), reusing the
+  multi-part `scorers/numeric.py` scorer from unit 1.1 — no new scorer code needed.
+- Wired `fmea` into `harness/run.py`'s `GENERATORS` registry (`--generator fmea` now works
+  end-to-end alongside `oee`, `mrp`, `inventory_policy`, `spc`, `scheduling`, `toc`, and
+  `quality_economics`).
+- Tests: `tests/test_fmea.py` — 5 hand-verified RPN/prioritization/threshold-count cases
+  (severity x occurrence x detection is simple enough to verify directly by hand from the
+  generator's own context), plus an independent-recomputation sweep over 60 (seed, difficulty)
+  combinations using a *separately written* running-max loop and manual threshold-counting loop
+  (rather than the generator's `max(range(...), key=...)` and generator-expression sum), so the
+  sweep genuinely cross-checks the arithmetic rather than re-calling the same code. Also covers
+  determinism, distinct-seeds, schema validation, failure-mode-count-per-difficulty,
+  RPN-within-[1,1000]-bounds, top-priority-failure-mode-within-bounds-and-actually-has-the-max-
+  RPN, and count-above-threshold-consistency checks. Added two end-to-end cases to
+  `tests/test_harness_run.py` exercising the multi-part FMEA path (all-correct and
+  partial-credit) through the real harness. Full suite: 555 passed. Swept 400 (seed, difficulty)
+  generated tasks against `schemas/task.schema.json` — all valid.
 
 ### 2026-07-31 — Unit 1.7: Quality economics generator + scorer
 - Reconciled stale state: `1.6` (PR #16) had already merged to `main` in a prior firing but the
