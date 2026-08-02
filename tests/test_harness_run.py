@@ -205,3 +205,31 @@ def test_run_scores_partial_fmea_answer_as_fraction_correct():
     )
     validate_result(result)
     assert result["score"] == pytest.approx(2 / 6)
+
+
+def test_run_scores_multi_part_standard_cost_variance_task_end_to_end():
+    # seed=1, standard standard_cost_variance task's ground truth is
+    # [12929.76, -18689.8, -26.25, 1027.8] (see tests/test_standard_cost_variance.py).
+    result = run(
+        "standard_cost_variance",
+        seed=1,
+        model_name="anthropic",
+        model=FakeModel(answer="12929.76, -18689.8, -26.25, 1027.8"),
+    )
+    validate_result(result)
+    assert result["task_id"] == "compute.standard_cost_variance.000001"
+    assert result["parsed_answer"] == [12929.76, -18689.8, -26.25, 1027.8]
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_partial_standard_cost_variance_answer_as_fraction_correct():
+    # Only the first 2 of 4 parts (MPV, MQV) are correct -> average score 2/4.
+    result = run(
+        "standard_cost_variance",
+        seed=1,
+        model_name="anthropic",
+        model=FakeModel(answer="12929.76, -18689.8, 0, 0"),
+    )
+    validate_result(result)
+    assert result["score"] == pytest.approx(2 / 4)
