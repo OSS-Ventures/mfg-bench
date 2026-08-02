@@ -4,11 +4,50 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.8 — FMEA arithmetic generator + scorer` — PR open, auto-merge enabled.
-- **Next unit (after 1.8 merges):** `1.9 — Standard-cost variance generator + scorer`.
+- **In flight:** `1.9 — Standard-cost variance generator + scorer` — PR open, auto-merge enabled.
+- **Next unit (after 1.9 merges):** `1.10 — classification / checklist scorers`.
 - **Blockers:** none.
 
 ## Log
+
+### 2026-08-02 — Unit 1.9: Standard-cost variance generator + scorer
+- Reconciled stale state: `1.8` (PR #20) had already merged to `main` in a prior firing but the
+  roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- Added `generators/standard_cost_variance.py`: a seeded, correct-by-construction standard-cost
+  variance generator. Given a period's actual output (units produced), the standard costing
+  system's per-unit direct-material standard (quantity per unit + standard price) and direct-
+  labor standard (hours per unit + standard rate), and the actual quantity/price/hours/rate
+  incurred (materials purchased and used with no beginning/ending inventory carryover, stated
+  explicitly), it computes the four classic standard-cost variances: Material Price Variance
+  (`(actual price - standard price) x actual quantity used`), Material Usage/Quantity Variance
+  (`(actual quantity used - standard quantity allowed) x standard price`), Labor Rate Variance
+  (`(actual rate - standard rate) x actual hours used`), and Labor Efficiency Variance
+  (`(actual hours used - standard hours allowed) x standard rate`), where Standard Quantity/
+  Hours Allowed = the per-unit standard x actual output units. Sign convention (positive =
+  unfavorable, negative = favorable) is stated explicitly in the prompt. Ground truth is a
+  4-part `numeric` answer, reusing the multi-part `scorers/numeric.py` scorer from unit 1.1 — no
+  new scorer code needed.
+- Wired `standard_cost_variance` into `harness/run.py`'s `GENERATORS` registry (`--generator
+  standard_cost_variance` now works end-to-end alongside `oee`, `mrp`, `inventory_policy`,
+  `spc`, `scheduling`, `toc`, `quality_economics`, and `fmea`).
+- Tests: `tests/test_standard_cost_variance.py` — 5 hand-verified MPV/MQV/LRV/LEV cases (worked
+  by hand from the generator's own context via the four variance formulas), plus an
+  independent-recomputation sweep over 60 (seed, difficulty) combinations using a *separately
+  derived* expansion (each variance as a difference of two products, `actual_total -
+  standard_total`, rather than the generator's `(difference) x factor`) so the sweep genuinely
+  cross-checks the arithmetic rather than re-calling the same code — compared with a 1-cent
+  tolerance rather than exact equality, since the two mathematically-identical orderings
+  occasionally land on opposite sides of a `.xx5` rounding boundary due to ordinary floating-
+  point representation error (the same class of issue noted for COPQ in unit 1.7). Also covers
+  determinism, distinct-seeds, schema validation, actual-output-units-range-per-difficulty,
+  standard-quantity/hours-allowed-derivation consistency, and price/rate-variance-sign-matches-
+  price/rate-direction checks. Added two end-to-end cases to `tests/test_harness_run.py`
+  exercising the multi-part standard-cost-variance path (all-correct and partial-credit)
+  through the real harness. Full suite: 628 passed. Swept 400 (seed, difficulty) generated
+  tasks against `schemas/task.schema.json` — all valid. Confirmed the CLI path
+  (`python -m harness.run --generator standard_cost_variance --seed 1 --model anthropic`)
+  reaches the real Anthropic API call and fails only on the missing `ANTHROPIC_API_KEY` (not
+  available in this sandbox), confirming correct end-to-end wiring short of live credentials.
 
 ### 2026-08-01 — Unit 1.8: FMEA arithmetic generator + scorer
 - Reconciled stale state: `1.7` (PR #18) had already merged to `main` in a prior firing but the
