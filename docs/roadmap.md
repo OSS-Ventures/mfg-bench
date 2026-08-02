@@ -41,8 +41,8 @@ _Build one generator+scorer unit at a time; test each scorer before moving on._
 - [x] **1.6 — TOC / bottleneck generator + scorer.** Bottleneck identification, throughput.
 - [x] **1.7 — Quality economics generator + scorer.** COPQ, scrap/rework cost, first-pass
   yield, rolled throughput yield.
-- [~] **1.8 — FMEA arithmetic generator + scorer.** RPN = S×O×D, prioritization.
-- [ ] **1.9 — Standard-cost variance generator + scorer.** Price/usage/efficiency variances.
+- [x] **1.8 — FMEA arithmetic generator + scorer.** RPN = S×O×D, prioritization.
+- [~] **1.9 — Standard-cost variance generator + scorer.** Price/usage/efficiency variances.
 - [ ] **1.10 — classification / checklist scorers.** Exact/set match and per-item fraction
   (report fraction + all-or-nothing). **Acceptance:** unit-tested.
 - [ ] **1.11 — taxonomy targets + public-set generation.** Fill `taxonomy/taxonomy.yaml`

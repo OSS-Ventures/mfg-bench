@@ -22,6 +22,7 @@ from generators.oee import OEEGenerator
 from generators.quality_economics import QualityEconomicsGenerator
 from generators.scheduling import SchedulingGenerator
 from generators.spc import SPCGenerator
+from generators.standard_cost_variance import StandardCostVarianceGenerator
 from generators.toc import TOCGenerator
 from harness.adapters.anthropic import AnthropicModel
 from harness.adapters.base import Model
@@ -39,6 +40,7 @@ GENERATORS = {
     "toc": TOCGenerator,
     "quality_economics": QualityEconomicsGenerator,
     "fmea": FMEAGenerator,
+    "standard_cost_variance": StandardCostVarianceGenerator,
 }
 SCORERS = {"numeric": NumericScorer}
 ADAPTERS = {"anthropic": AnthropicModel}
