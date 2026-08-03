@@ -52,11 +52,11 @@ _Build one generator+scorer unit at a time; test each scorer before moving on._
   of git; instances `.gitignore`d. **Acceptance:** contamination check — no held-out instances
   tracked by git.
 - [x] **1.13 — OpenAI + Google adapters.** One thin adapter each behind the `Model` interface.
-- [~] **1.14 — First leaderboard.** `harness/aggregate.py` → markdown + csv with per-domain and
+- [x] **1.14 — First leaderboard.** `harness/aggregate.py` → markdown + csv with per-domain and
   per-tier breakdowns. **Acceptance:** a reproducible leaderboard exists in `results/`.
 
 ## Phase 2 — Family C (Simulated): decision & orchestration
-- [ ] **2.1 — Simulator engine.** Deterministic `engine.step(state, action) -> state, kpis`.
+- [~] **2.1 — Simulator engine.** Deterministic `engine.step(state, action) -> state, kpis`.
   **Acceptance:** same seed + actions → same KPIs (tested).
 - [ ] **2.2 — Scenario: line-down recovery** + baseline & reference policies. KPI: total
   weighted tardiness. **Acceptance:** both score bounds work.

@@ -3,18 +3,56 @@
 The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
-- **Phase:** 1 (Family A minimum lovable) — **complete.**
-- **In flight:** `1.14 — First leaderboard` — PR open. This is the last unit of Phase 1; once
-  it merges, the next firing should move to Phase 2 (`2.1 — Simulator engine`) and resume
-  normal one-unit-per-firing discipline (see note below).
-- **Next unit (after 1.14 merges):** `2.1 — Simulator engine` (Phase 2, Family C).
+- **Phase:** 2 (Family C — simulated decision & orchestration) — in progress.
+- **Reconciled:** `1.14` (PR #34) had already merged to `main` (CI green on the merge commit)
+  but the roadmap checkbox was left at `[~]` — fixed to `[x]` now. **Phase 1 is fully complete**
+  (all 14 units).
+- **In flight:** `2.1 — Simulator engine` — PR open. Normal one-unit-per-firing discipline (see
+  prior note below) applies again starting with this unit.
+- **Next unit (after 2.1 merges):** `2.2 — Scenario: line-down recovery` (Phase 2, Family C).
 - **Blockers:** none.
 - **Note:** at Renan's direct request (interactive session, not a scheduled loop firing), Phase
   1's remaining units (1.10–1.14) were built back-to-back in one sitting rather than one per
   firing, and `.loop/budget.yaml`'s `stop_date` was extended from `2026-08-05` to `2026-08-10`
-  to give this enough runway. Normal one-unit-per-firing discipline resumes with Phase 2.
+  to give this enough runway. Normal one-unit-per-firing discipline resumed with this firing.
 
 ## Log
+
+### 2026-08-03 — Unit 2.1: Simulator engine
+- Reconciled stale state: `1.14` (PR #34) had already merged to `main` (verified the merge
+  commit's CI run is green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+  **This confirms all of Phase 1 is complete.**
+- Implemented `simulator/engine.py`'s core contract (`state, kpis = step(state, action)`),
+  scenario-agnostic on purpose so it can serve both upcoming Phase 2 scenarios (2.2 line-down
+  recovery, 2.3 demand spike) without redesign: state tracks per-job `remaining_work`/`release`/
+  `due`/`weight`/`completed_at` and per-machine `capacity`/`down_until`, plus a `cumulative`
+  block (`weighted_tardiness`, `overtime_cost`, `jobs_completed`, `jobs_completed_on_time`).
+  Actions are a per-step `{machine_id: job_id}` assignment map plus an optional `overtime` flag
+  per machine (extra capacity at `OVERTIME_MULTIPLIER`, costed at `OVERTIME_COST_PER_UNIT` per
+  extra work unit). `step()` is a pure function — it deep-copies the input state rather than
+  mutating it — and has no internal randomness, so determinism follows directly from having no
+  hidden state; a machine's downtime window (`down_until`) is itself just a plain state field
+  the engine reads, generically supporting the "machine goes down mid-shift" line-down-recovery
+  scenario without the engine needing scenario-specific code. Illegal actions (unknown/down
+  machine, unknown/unreleased/already-completed job, double-booking a job across two machines in
+  the same step) raise `ValueError` rather than being silently ignored, since those are caller
+  bugs, not simulation outcomes to score. Tardiness is only costed at the step a job actually
+  completes (`weight * max(0, completed_at - due)`), matching unit 1.5's scheduling generator's
+  own weighted-tardiness formula; jobs still incomplete when a scenario's horizon ends are that
+  scenario's scorer's concern (built in 2.2/2.3), not this engine's, since the engine itself has
+  no notion of a horizon.
+- Tests: `tests/test_engine.py` — hand-verified single- and multi-step cases (on-time completion,
+  late completion costing weighted tardiness, overtime boosting capacity and its cost, worked out
+  by hand from the docstring's own formulas rather than re-deriving from the implementation),
+  idle-machine-via-omission vs. explicit-`None` equivalence, input-state-immutability (`step()`
+  never mutates its argument), a determinism check (two independent runs from freshly deep-copied
+  initial states through the same 3-action sequence produce byte-identical state/KPI histories),
+  a machine becoming available exactly at `down_until`, and one `ValueError` case each for
+  unknown machine, unknown job, down machine, unreleased job, already-completed job, and
+  double-booked job. Full suite: 705 passed (was 692 before this unit).
+- No `--generator`/`--model` CLI wiring in this unit — per the roadmap unit's own scope (engine
+  only; scenarios, baseline/reference policies, and the L4/L5 harness modes are 2.2–2.5), there
+  is nothing yet for `harness/run.py` to invoke.
 
 ### 2026-08-03 — Unit 1.14: First leaderboard
 - Reconciled stale state: `1.13` (PR #32) had already merged to `main` but the roadmap checkbox
@@ -477,6 +515,4 @@ The autonomous loop appends here every iteration. Newest entries on top.
   `SPEC.md`, `config.yaml`, `requirements.txt`, `taxonomy/taxonomy.yaml`, the three JSON
   schemas, base interface stubs (`generators/base.py`, `scorers/base.py`,
   `harness/adapters/base.py`, `harness/run.py`, `simulator/engine.py`), CI workflow, README.
-- Created the loop machinery: `.loop/build-loop.md` (per-firing prompt) and
-  `.loop/budget.yaml` (self-governed spend ledger).
 - No benchmark units built yet — Phase 0 (unit 0.1) is the loop's first task.
