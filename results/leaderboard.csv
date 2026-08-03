@@ -1,0 +1,9 @@
+breakdown,model,bucket,count,mean_score,parse_failure_rate
+overall,SMOKE_TEST_NOT_A_REAL_MODEL,-,8,0.625,0.0
+domain,SMOKE_TEST_NOT_A_REAL_MODEL,continuous_improvement,2,0.5,0.0
+domain,SMOKE_TEST_NOT_A_REAL_MODEL,supply_chain_sop,2,0.5,0.0
+domain,SMOKE_TEST_NOT_A_REAL_MODEL,production_scheduling,1,1.0,0.0
+domain,SMOKE_TEST_NOT_A_REAL_MODEL,quality_problem_solving,2,0.5,0.0
+domain,SMOKE_TEST_NOT_A_REAL_MODEL,cost_performance,1,1.0,0.0
+tier,SMOKE_TEST_NOT_A_REAL_MODEL,L2,5,0.6,0.0
+tier,SMOKE_TEST_NOT_A_REAL_MODEL,L3,3,0.6667,0.0

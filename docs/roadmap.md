@@ -51,8 +51,8 @@ _Build one generator+scorer unit at a time; test each scorer before moving on._
 - [x] **1.12 — Held-out set from private seeds.** Generate `data/heldout/` from seeds kept out
   of git; instances `.gitignore`d. **Acceptance:** contamination check — no held-out instances
   tracked by git.
-- [~] **1.13 — OpenAI + Google adapters.** One thin adapter each behind the `Model` interface.
-- [ ] **1.14 — First leaderboard.** `harness/aggregate.py` → markdown + csv with per-domain and
+- [x] **1.13 — OpenAI + Google adapters.** One thin adapter each behind the `Model` interface.
+- [~] **1.14 — First leaderboard.** `harness/aggregate.py` → markdown + csv with per-domain and
   per-tier breakdowns. **Acceptance:** a reproducible leaderboard exists in `results/`.
 
 ## Phase 2 — Family C (Simulated): decision & orchestration
