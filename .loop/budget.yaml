@@ -12,7 +12,7 @@ enabled: true
 
 # Hard stop. The loop will not do build work on any date after this (YYYY-MM-DD).
 # Set by Renan at arm-time; extend as the build progresses.
-stop_date: "2026-08-05"
+stop_date: "2026-08-10"
 
 # Maximum build iterations that may run per calendar day (UTC). The Routine fires every 4h
 # (up to 6 fires/day); this caps how many of those fires actually build. Extra fires exit as
