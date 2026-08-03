@@ -48,10 +48,10 @@ _Build one generator+scorer unit at a time; test each scorer before moving on._
 - [x] **1.11 — taxonomy targets + public-set generation.** Fill `taxonomy/taxonomy.yaml`
   per-cell target counts; generate a public set (~400–600 tasks) into `data/public/`.
   **Acceptance:** counts match targets; all tasks schema-valid; regeneration is deterministic.
-- [~] **1.12 — Held-out set from private seeds.** Generate `data/heldout/` from seeds kept out
+- [x] **1.12 — Held-out set from private seeds.** Generate `data/heldout/` from seeds kept out
   of git; instances `.gitignore`d. **Acceptance:** contamination check — no held-out instances
   tracked by git.
-- [ ] **1.13 — OpenAI + Google adapters.** One thin adapter each behind the `Model` interface.
+- [~] **1.13 — OpenAI + Google adapters.** One thin adapter each behind the `Model` interface.
 - [ ] **1.14 — First leaderboard.** `harness/aggregate.py` → markdown + csv with per-domain and
   per-tier breakdowns. **Acceptance:** a reproducible leaderboard exists in `results/`.
 

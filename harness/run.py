@@ -26,6 +26,8 @@ from generators.standard_cost_variance import StandardCostVarianceGenerator
 from generators.toc import TOCGenerator
 from harness.adapters.anthropic import AnthropicModel
 from harness.adapters.base import Model
+from harness.adapters.google import GoogleModel
+from harness.adapters.openai import OpenAIModel
 from harness.validate import validate_result, validate_task
 from scorers.numeric import NumericScorer
 
@@ -43,7 +45,7 @@ GENERATORS = {
     "standard_cost_variance": StandardCostVarianceGenerator,
 }
 SCORERS = {"numeric": NumericScorer}
-ADAPTERS = {"anthropic": AnthropicModel}
+ADAPTERS = {"anthropic": AnthropicModel, "openai": OpenAIModel, "google": GoogleModel}
 
 
 def load_config() -> dict:
