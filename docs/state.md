@@ -4,11 +4,47 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.9 — Standard-cost variance generator + scorer` — PR open, auto-merge enabled.
-- **Next unit (after 1.9 merges):** `1.10 — classification / checklist scorers`.
+- **In flight:** `1.10 — classification / checklist scorers` — PR open.
+- **Next unit (after 1.10 merges):** `1.11 — taxonomy targets + public-set generation`.
 - **Blockers:** none.
+- **Note:** at Renan's direct request (interactive session, not a scheduled loop firing), the
+  remaining Phase 1 units (1.10–1.14) are being built back-to-back in one sitting rather than
+  one per firing, and `.loop/budget.yaml`'s `stop_date` was extended from `2026-08-05` to
+  `2026-08-10` to give this enough runway. Normal one-unit-per-firing discipline resumes once
+  Phase 1 is complete.
 
 ## Log
+
+### 2026-08-02 — Unit 1.10: classification / checklist scorers
+- Reconciled stale state: `1.9` (PR #22, plus a small follow-up fixup PR #23 that restored two
+  end-to-end test cases dropped by a `push_files` call) had already merged to `main` but the
+  roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- Added `scorers/classification.py`: single-label exact match (`ground_truth["value"]` a
+  string) and multi-label set match (`ground_truth["value"]` a list) in one scorer, selected by
+  the shape of the ground truth. Both sides are normalized (strip + case-fold) before
+  comparison, so label text is compared semantically rather than requiring byte-identical
+  formatting; a set match ignores answer order and duplicate items. Matches SPEC.md Section 8:
+  "classification / multiple_choice → exact match."
+- Added `scorers/checklist.py`: `score()` is the fraction of required items
+  (`ground_truth["required_items"]`) the model's answer correctly includes (recall over
+  required items; extra, non-required items in the answer are not penalized, matching SPEC.md
+  Section 8's "fraction of required items correctly present"). `all_or_nothing_score()` is the
+  stricter companion metric SPEC.md asks to report alongside the fraction: 1.0 only if every
+  required item is present, else 0.0.
+- Per the roadmap unit's own scope ("Acceptance: unit-tested" — a scorer-only unit, no new
+  generator, mirroring unit 1.1's numeric-scorer-hardening precedent), no new generator or
+  harness/run.py wiring was added this round; classification/checklist tasks will get their
+  generators in Phase 3 (Family B, source-grounded closed-form tasks), which is where these
+  scorers are actually needed.
+- Tests: `tests/test_classification_scorer.py` (16 cases: single-label exact/mismatch/case-
+  insensitive/whitespace/wrong-type, multi-label set match/order-independence/extra-item/
+  missing-item/duplicate-collapse/case-insensitive/wrong-type/non-string-element, plus two
+  schema-validity checks against hand-built single-label and set-match task dicts) and
+  `tests/test_checklist_scorer.py` (16 cases: fraction on full/partial/none/extras-not-
+  penalized/case-insensitive/duplicates-collapse/empty-required/wrong-type/non-string-element,
+  all-or-nothing on complete/complete-with-extras/incomplete, a boundary cross-check between
+  `score()` and `all_or_nothing_score()`, plus a schema-validity check against a hand-built
+  checklist task dict). Full suite: 660 passed.
 
 ### 2026-08-02 — Unit 1.9: Standard-cost variance generator + scorer
 - Reconciled stale state: `1.8` (PR #20) had already merged to `main` in a prior firing but the
