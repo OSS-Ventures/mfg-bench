@@ -4,8 +4,8 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.12 — held-out set from private seeds` — PR open.
-- **Next unit (after 1.12 merges):** `1.13 — OpenAI + Google adapters`.
+- **In flight:** `1.13 — OpenAI + Google adapters` — PR open.
+- **Next unit (after 1.13 merges):** `1.14 — First leaderboard`.
 - **Blockers:** none.
 - **Note:** at Renan's direct request (interactive session, not a scheduled loop firing), the
   remaining Phase 1 units (1.10–1.14) are being built back-to-back in one sitting rather than
@@ -14,6 +14,49 @@ The autonomous loop appends here every iteration. Newest entries on top.
   Phase 1 is complete.
 
 ## Log
+
+### 2026-08-03 — Unit 1.13: OpenAI + Google adapters
+- Reconciled stale state: `1.12` (PR #30) had already merged to `main` but the roadmap checkbox
+  was left at `[~]` — fixed to `[x]` now.
+- Added `harness/adapters/openai.py` (`OpenAIModel`): thin wrapper around the Chat Completions
+  API (`client.chat.completions.create`), reading `OPENAI_API_KEY` via the SDK's own default,
+  temperature 0 by default, using `max_completion_tokens` (the modern parameter, forward-
+  compatible with reasoning models like GPT-5 that reject the legacy `max_tokens`).
+- Added `harness/adapters/google.py` (`GoogleModel`): thin wrapper around the Gemini API via
+  `google-genai` (Google's current unified SDK for the Gemini Developer API + Vertex AI,
+  superseding the older, much heavier `google-generativeai` package), reading
+  `GEMINI_API_KEY`/`GOOGLE_API_KEY` via the SDK's own default.
+- Wired both into `harness/run.py`'s `ADAPTERS` registry (`--model openai` / `--model google`
+  now work end-to-end alongside `anthropic`) and uncommented the `gpt-5` / `gemini-latest`
+  placeholder entries in `config.yaml`'s model panel.
+- **Dependency resolution (the actual work in this unit, beyond the two small adapter files):**
+  adding `google-genai` surfaced a real version conflict already latent in `requirements.txt`
+  — `google-genai` requires `httpx>=0.28.1`, but `httpx==0.27.2` was pinned specifically
+  because `anthropic==0.39.0` (pinned since unit 0.1) passes a `proxies` kwarg that httpx 0.28
+  removed. Fixed at the root rather than patched around: upgraded `anthropic` to `0.120.2`,
+  which is compatible with `httpx>=0.28` (confirmed working here, not just assumed), so both
+  SDKs can now coexist on one `httpx` version. This also required bumping the (currently
+  unused, reserved-for-later) `pydantic` pin from `2.9.2` to `2.13.4`, since `google-genai`
+  requires `pydantic>=2.12.5`. Full suite re-run after every bump; 678 passed throughout, no
+  regressions from the anthropic/httpx/pydantic upgrades.
+- Confirmed both adapters reach their real SDK client construction and fail only on missing
+  credentials (`python -m harness.run --generator oee --seed 1 --model openai` /
+  `--model google`, run with the relevant API key env vars unset) — the same end-to-end wiring
+  verification used for the anthropic adapter in unit 0.1, extended to both new adapters.
+- No new adapter-specific test file, mirroring the existing precedent: the anthropic adapter
+  also has no dedicated unit test file (it's exercised via the real CLI, per above, plus the
+  `FakeModel`-based end-to-end harness tests in `tests/test_harness_run.py`, which don't touch
+  the adapters at all). Full suite: 678 passed (unchanged from before this unit — no new tests
+  needed since the acceptance criterion is "one thin adapter each behind the `Model`
+  interface," which the CLI verification above establishes directly).
+- **Sandbox-only note, not a new project dependency:** in this dev sandbox, `google-auth`
+  (a transitive dependency of `google-genai`) failed to import via a pre-existing, apparently
+  mismatched system `cryptography` package (missing `_cffi_backend`); installing `cffi`
+  resolved it locally. This is not added to `requirements.txt` — a clean `pip install -r
+  requirements.txt` in an unpolluted environment should resolve `cryptography`'s own compiled
+  wheel correctly without needing a manual `cffi` install; this was specific to a stray
+  system-level package in this particular sandbox, the same class of one-off environment quirk
+  as unit 0.1's `httpx`/`anthropic` discovery, just resolved without needing a new pin.
 
 ### 2026-08-03 — Unit 1.12: held-out set from private seeds
 - Reconciled stale state: `1.11` (PR #28) had already merged to `main` but the roadmap checkbox

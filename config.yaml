@@ -20,10 +20,12 @@ models:
   - name: "claude-opus-4-8"
     adapter: "anthropic"
     temperature: 0
-  # - name: "gpt-5"        # added in unit 1.13
-  #   adapter: "openai"
-  # - name: "gemini-latest"
-  #   adapter: "google"
+  - name: "gpt-5"
+    adapter: "openai"
+    temperature: 0
+  - name: "gemini-latest"
+    adapter: "google"
+    temperature: 0
 
 # Answer extraction: models must emit their final answer inside these tags.
 answer_tag: "answer"

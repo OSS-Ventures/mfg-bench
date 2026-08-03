@@ -1,10 +1,11 @@
 # Keep this list short and pinned. Add a dep only when a unit needs it.
-pydantic==2.9.2
+pydantic==2.13.4  # bumped for unit 1.13: google-genai requires pydantic>=2.12.5
 jsonschema==4.23.0
 numpy==2.1.3
 pyyaml==6.0.2
-anthropic==0.39.0
-httpx==0.27.2  # anthropic 0.39.0's client predates httpx 0.28's removal of the `proxies` kwarg
+anthropic==0.120.2  # bumped for unit 1.13: 0.39.0 pinned httpx<0.28; 0.120.2 works with >=0.28
+httpx==0.28.1  # required by google-genai (>=0.28.1); anthropic 0.120.2 is compatible with it too
+openai==2.52.0
+google-genai==2.16.0  # unified Google SDK; supersedes the older, heavier google-generativeai
 pytest==8.3.3
 # scipy — add only if an SPC/statistics unit needs it.
-# openai, google-generativeai — added with their adapters (unit 1.13).
