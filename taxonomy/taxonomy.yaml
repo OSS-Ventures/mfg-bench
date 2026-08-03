@@ -21,7 +21,45 @@ family_targets:      # fraction of v1 headline set
   simulated: 0.25
 
 # Per-cell target counts (domain x tier x format). Populated in unit 1.11.
-targets: {}
+#
+# Only cells reachable by an implemented generator carry a nonzero target so far (all Family A
+# / "computed" -- Phase 1). Family B (source_grounded) and Family C (simulated) cells, plus the
+# L1/L5 tiers and the classification/multiple_choice/checklist/structured/simulated formats,
+# are left at their implicit 0 until Phase 2/3 build the generators that would fill them --
+# `family_targets` above states the *eventual* full-taxonomy split (A 55% / B 20% / C 25%); this
+# `targets` block reflects what can honestly be generated today, not the eventual mix.
+#
+# A cell's target may be produced by more than one generator (see
+# `harness/generate_public_set.py`'s `GENERATOR_TARGETS`, which assigns each of the 9 Family A
+# generators an equal share of 45 and sums to its cell's total below):
+#   - supply_chain_sop / L2 / numeric (90): mrp (45) + inventory_policy (45)
+#   - quality_problem_solving / L2 / numeric (45): spc
+#   - quality_problem_solving / L3 / numeric (45): fmea
+#   - production_scheduling / L3 / numeric (45): toc
+#   - production_scheduling / L4 / numeric (45): scheduling
+#   - cost_performance / L2 / numeric (90): quality_economics (45) + standard_cost_variance (45)
+#   - continuous_improvement / L2 / numeric (45): oee
+# Total: 405 tasks, within the roadmap's ~400-600 target for the public set (unit 1.11).
+targets:
+  continuous_improvement:
+    L2:
+      numeric: 45
+  supply_chain_sop:
+    L2:
+      numeric: 90
+  quality_problem_solving:
+    L2:
+      numeric: 45
+    L3:
+      numeric: 45
+  production_scheduling:
+    L3:
+      numeric: 45
+    L4:
+      numeric: 45
+  cost_performance:
+    L2:
+      numeric: 90
 
 # Every domain ships a hard subset (calibrated so frontier models leave headroom).
 hard_subset_fraction: 0.2

@@ -4,8 +4,8 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.10 — classification / checklist scorers` — PR open.
-- **Next unit (after 1.10 merges):** `1.11 — taxonomy targets + public-set generation`.
+- **In flight:** `1.11 — taxonomy targets + public-set generation` — PR open.
+- **Next unit (after 1.11 merges):** `1.12 — held-out set from private seeds`.
 - **Blockers:** none.
 - **Note:** at Renan's direct request (interactive session, not a scheduled loop firing), the
   remaining Phase 1 units (1.10–1.14) are being built back-to-back in one sitting rather than
@@ -14,6 +14,40 @@ The autonomous loop appends here every iteration. Newest entries on top.
   Phase 1 is complete.
 
 ## Log
+
+### 2026-08-03 — Unit 1.11: taxonomy targets + public-set generation
+- Reconciled stale state: `1.10` (PR #26) had already merged to `main` but the roadmap checkbox
+  was left at `[~]` — fixed to `[x]` now.
+- Filled `taxonomy/taxonomy.yaml`'s `targets` block with per-cell (domain x reasoning_tier x
+  answer_format) targets, but only for cells an implemented Family A generator can actually
+  produce today — the other cells (Family B/C domains, L1/L5 tiers, non-numeric formats) stay
+  at their implicit 0 with a comment explaining they await Phase 2/3 generators, rather than
+  pretending a target exists for a task type that can't be generated yet (the same
+  generation≠grading honesty principle from `GOALS.md`, applied to planning data too).
+- Added `harness/generate_public_set.py`: assigns each of the 9 Family A generators an equal
+  share of 45 tasks (`GENERATOR_TARGETS`), split per generator into standard/hard by
+  `taxonomy.yaml`'s `hard_subset_fraction` (0.2 -> 36 standard + 9 hard each, exactly, no
+  rounding surprises), using contiguous seeds starting at 0 reserved for the public set (the
+  held-out set in unit 1.12 uses an entirely disjoint, non-committed seed range). Every
+  generated task is validated against `schemas/task.schema.json` before being written, one
+  JSONL file per generator into `data/public/` (405 tasks total across 9 files, within the
+  roadmap's ~400-600 target).
+- Tests: `tests/test_generate_public_set.py` — total count matches the sum of
+  `GENERATOR_TARGETS` and falls in [400, 600]; per-generator count matches its target; every
+  task validates against the schema; the standard/hard split matches
+  `hard_subset_fraction` exactly per generator; the *aggregate* per-cell counts (summed across
+  whichever generators share a cell, e.g. `mrp` + `inventory_policy` both filling
+  `supply_chain_sop/L2/numeric`) match `taxonomy.yaml`'s `targets` exactly; task ids are unique
+  across the whole public set; regenerating twice yields byte-identical task content (ignoring
+  the `created` date stamp, which is the one field that legitimately varies by wall-clock day);
+  and a custom `generator_targets` override is respected (used by the test suite itself to
+  avoid re-running the full 405-task generation in every test). Full suite: 669 passed.
+- Ran `python -m harness.generate_public_set` for real and committed its output: 405 tasks
+  across `data/public/{oee,mrp,inventory_policy,spc,scheduling,toc,quality_economics,fmea,
+  standard_cost_variance}.jsonl` (852 KB total). This is the actual public snapshot SPEC.md
+  Section 10 describes — fixed, versioned, may be memorized by future models over time, and
+  that's an accepted tradeoff since the *held-out* set (unit 1.12) is what the official
+  leaderboard will run against.
 
 ### 2026-08-02 — Unit 1.10: classification / checklist scorers
 - Reconciled stale state: `1.9` (PR #22, plus a small follow-up fixup PR #23 that restored two
