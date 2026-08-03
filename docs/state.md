@@ -3,17 +3,59 @@
 The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
-- **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.13 — OpenAI + Google adapters` — PR open.
-- **Next unit (after 1.13 merges):** `1.14 — First leaderboard`.
+- **Phase:** 1 (Family A minimum lovable) — **complete.**
+- **In flight:** `1.14 — First leaderboard` — PR open. This is the last unit of Phase 1; once
+  it merges, the next firing should move to Phase 2 (`2.1 — Simulator engine`) and resume
+  normal one-unit-per-firing discipline (see note below).
+- **Next unit (after 1.14 merges):** `2.1 — Simulator engine` (Phase 2, Family C).
 - **Blockers:** none.
-- **Note:** at Renan's direct request (interactive session, not a scheduled loop firing), the
-  remaining Phase 1 units (1.10–1.14) are being built back-to-back in one sitting rather than
-  one per firing, and `.loop/budget.yaml`'s `stop_date` was extended from `2026-08-05` to
-  `2026-08-10` to give this enough runway. Normal one-unit-per-firing discipline resumes once
-  Phase 1 is complete.
+- **Note:** at Renan's direct request (interactive session, not a scheduled loop firing), Phase
+  1's remaining units (1.10–1.14) were built back-to-back in one sitting rather than one per
+  firing, and `.loop/budget.yaml`'s `stop_date` was extended from `2026-08-05` to `2026-08-10`
+  to give this enough runway. Normal one-unit-per-firing discipline resumes with Phase 2.
 
 ## Log
+
+### 2026-08-03 — Unit 1.14: First leaderboard
+- Reconciled stale state: `1.13` (PR #32) had already merged to `main` but the roadmap checkbox
+  was left at `[~]` — fixed to `[x]` now. **This completes Phase 1** (all 14 units, 0.1 and
+  1.1–1.14).
+- Added `harness/aggregate.py`: reads every result record across `results/*.jsonl`, grouped by
+  each record's own `model` field (not by filename, which is keyed by adapter rather than the
+  specific model a config entry names). Each task's `domain`/`reasoning_tier`/`family` are
+  re-derived from its `task_id`'s generator segment via `generator_metadata()` (a `seed=0`
+  throwaway instance per generator, cached) rather than looked up from a stored copy — every
+  generator hardcodes these fields as constants independent of seed/difficulty, so this can
+  never drift from a generator's actual current definition, and doesn't depend on
+  `data/public/` being present. `aggregate()` computes count/mean-score/parse-failure-rate
+  overall, per domain, and per reasoning tier, for every model found. `write_markdown()` and
+  `write_csv()` render the same aggregated structure two ways — a human-readable
+  `results/leaderboard.md` and a machine-parseable `results/leaderboard.csv` (long format:
+  one row per (breakdown, model, bucket)).
+- Tests: `tests/test_aggregate.py` — `generator_of()` task-id parsing (including a rejection
+  case), `generator_metadata()` hand-verified against four generators' actual hardcoded
+  domain/tier fields plus a cache-identity check, hand-verified aggregation math (overall mean/
+  parse-failure-rate, per-model separation, per-domain pooling across generators that share a
+  cell — e.g. `mrp` + `inventory_policy` both filling `supply_chain_sop`, per-tier grouping,
+  empty-input edge case), `load_results()` reading multiple jsonl files (including blank-line
+  tolerance) from an isolated `tmp_path`, and markdown/csv rendering checks. All fixtures are
+  synthetic and confined to `tmp_path` — no test touches the real `results/` directory. Full
+  suite: 692 passed.
+- **On the acceptance criterion ("a reproducible leaderboard exists in `results/`") without any
+  live model credentials in this environment:** rather than leave `results/` empty (which would
+  only prove the code compiles, not that the pipeline produces a real leaderboard artifact) or
+  fabricate provider scores (which GOALS.md's non-negotiable rule rules out even in spirit), ran
+  the actual `generate -> run -> score` pipeline for real (`harness.run.run(...)`, no mocking of
+  the scoring path) against 8 hand-picked public-set tasks across 5 generators/domains, using a
+  canned stand-in `Model` (no network call) under the deliberately unmistakable model name
+  `SMOKE_TEST_NOT_A_REAL_MODEL`, then ran `python -m harness.aggregate` for real. This produced
+  genuine `results/leaderboard.md` + `results/leaderboard.csv` files (mean score 0.625 across
+  the 8 smoke-test tasks, with per-domain/per-tier breakdowns) that satisfy the acceptance
+  criterion literally while being unmistakable about what they are and aren't. Added
+  `results/README.md` explaining the distinction and instructing that `smoke_test.jsonl` should
+  be deleted and `aggregate` re-run once a real credentialed model run exists — mirrors how
+  units 0.1 and 1.13 handled the same "no credentials in this environment" limitation (confirm
+  wiring reaches the real path; don't fabricate a result).
 
 ### 2026-08-03 — Unit 1.13: OpenAI + Google adapters
 - Reconciled stale state: `1.12` (PR #30) had already merged to `main` but the roadmap checkbox
