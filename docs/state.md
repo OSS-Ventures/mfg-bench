@@ -4,8 +4,8 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 1 (Family A minimum lovable).
-- **In flight:** `1.11 — taxonomy targets + public-set generation` — PR open.
-- **Next unit (after 1.11 merges):** `1.12 — held-out set from private seeds`.
+- **In flight:** `1.12 — held-out set from private seeds` — PR open.
+- **Next unit (after 1.12 merges):** `1.13 — OpenAI + Google adapters`.
 - **Blockers:** none.
 - **Note:** at Renan's direct request (interactive session, not a scheduled loop firing), the
   remaining Phase 1 units (1.10–1.14) are being built back-to-back in one sitting rather than
@@ -14,6 +14,35 @@ The autonomous loop appends here every iteration. Newest entries on top.
   Phase 1 is complete.
 
 ## Log
+
+### 2026-08-03 — Unit 1.12: held-out set from private seeds
+- Reconciled stale state: `1.11` (PR #28) had already merged to `main` but the roadmap checkbox
+  was left at `[~]` — fixed to `[x]` now.
+- Added `harness/generate_heldout_set.py`, the held-out twin of unit 1.11's
+  `generate_public_set.py`. The one hard requirement from SPEC.md Section 10 ("generated from
+  private seeds kept out of git") is enforced structurally, not just by convention: `--seed-base`
+  has no default anywhere in the code — it must be supplied explicitly at generation time by
+  whoever runs a release cycle, from a value they keep to themselves. `generate_heldout_set()`
+  additionally raises `ValueError` if `seed_base < MIN_SAFE_SEED_BASE` (10,000), a guard rail
+  against accidentally reusing the public set's seed range (which only ever goes up to a few
+  hundred) and thereby leaking public instances under the held-out label. Each generator gets
+  its own disjoint offset sub-range of the caller-supplied seed base, so generators never
+  collide with each other either. Output goes to `data/heldout/`, which `.gitignore` already
+  excludes (`data/heldout/*`, `!data/heldout/.gitkeep`) — this unit didn't need to touch
+  `.gitignore` at all, since the exclusion was already in place from bootstrap.
+- Tests: `tests/test_generate_heldout_set.py` — the seed-base floor is enforced (below it
+  raises, at it succeeds); every generated task validates against the schema; regeneration
+  with the same seed base is deterministic (byte-identical modulo the `created` date stamp);
+  different seed bases yield different instances; per-generator seed ranges are disjoint from
+  each other; held-out seeds are always `>= MIN_SAFE_SEED_BASE` so they can never collide with
+  the public set's seed range; and — the actual contamination check the unit's acceptance
+  criterion asks for — writing real files via `write_heldout_set()` and then shelling out to
+  `git check-ignore` and `git ls-files --error-unmatch` confirms those files are git-ignored
+  and never tracked. Test-written held-out files are cleaned up by a fixture teardown after
+  each test (they're gitignored either way, but tidy). Did **not** run the script for real
+  against a genuine private seed — there is no actual held-out release cycle yet (that's unit
+  7.1's refresh-script job); this unit proves the mechanism is correct and the contamination
+  guarantee holds, which is what its acceptance criterion asks for. Full suite: 678 passed.
 
 ### 2026-08-03 — Unit 1.11: taxonomy targets + public-set generation
 - Reconciled stale state: `1.10` (PR #26) had already merged to `main` but the roadmap checkbox
