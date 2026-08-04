@@ -4,19 +4,60 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 2 (Family C — simulated decision & orchestration) — in progress.
-- **Reconciled:** `1.14` (PR #34) had already merged to `main` (CI green on the merge commit)
-  but the roadmap checkbox was left at `[~]` — fixed to `[x]` now. **Phase 1 is fully complete**
-  (all 14 units).
-- **In flight:** `2.1 — Simulator engine` — PR open. Normal one-unit-per-firing discipline (see
-  prior note below) applies again starting with this unit.
-- **Next unit (after 2.1 merges):** `2.2 — Scenario: line-down recovery` (Phase 2, Family C).
+- **Reconciled:** `2.1` (PR #36) had already merged to `main` (CI green on the merge commit)
+  but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- **In flight:** `2.2 — Scenario: line-down recovery` — PR open.
+- **Next unit (after 2.2 merges):** `2.3 — Scenario: demand spike / rebalance` (Phase 2, Family C).
 - **Blockers:** none.
-- **Note:** at Renan's direct request (interactive session, not a scheduled loop firing), Phase
-  1's remaining units (1.10–1.14) were built back-to-back in one sitting rather than one per
-  firing, and `.loop/budget.yaml`'s `stop_date` was extended from `2026-08-05` to `2026-08-10`
-  to give this enough runway. Normal one-unit-per-firing discipline resumed with this firing.
 
 ## Log
+
+### 2026-08-04 — Unit 2.2: Scenario: line-down recovery + baseline & reference policies
+- Reconciled stale state: `2.1` (PR #36) had already merged to `main` (verified the merge
+  commit's CI run is green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- Added `simulator/scenarios/line_down_recovery.py`: a seeded scenario generator built on top
+  of unit 2.1's `engine.step` contract. `generate(seed, difficulty)` produces an initial state
+  (3 machines, 5 jobs standard / 7 jobs hard, all released at t=0) with exactly one machine
+  going down for a randomized window mid-shift, plus a horizon sized with a comfortable margin
+  over total-work / total-capacity. `total_weighted_tardiness(final_state, horizon)` is this
+  scenario's KPI: the engine's own `cumulative.weighted_tardiness` plus a same-formula
+  (`weight * max(0, lateness)`) penalty for any job still unfinished when the horizon ends —
+  needed because the engine itself (per its own unit-2.1 docstring) only costs tardiness at
+  actual completion, so a policy that simply never finishes a job would otherwise show zero
+  tardiness for it.
+- Added `simulator/policies.py`, scenario-agnostic (reads only the engine's own state shape, so
+  it's reusable for unit 2.3's demand-spike scenario too): `baseline_policy` is a naive, fixed
+  round-robin job-to-machine queue that never reallocates work off a down machine;
+  `reference_policy` is a well-known greedy heuristic (weighted-shortest-remaining-work-first,
+  a WSPT variant, pairing the highest-capacity available machine with the highest-priority
+  workable job each step) that adapts immediately to the down/up transition — documented as a
+  heuristic, not a claimed exact optimum, per SPEC.md Section 9. `simulate_episode` is the
+  generic runner that drives a policy through `engine.step` for a fixed horizon.
+- **The acceptance criterion ("both score bounds work") in practice:** a pure greedy heuristic
+  can occasionally underperform a naive fixed policy on a specific instance — an empirical
+  sweep of 400 (seed, difficulty) scenarios found 1 case where `reference_policy` alone scored
+  worse than `baseline_policy`. Since a reference bound that can fall below its own baseline
+  would break KPI normalization (`score = clip((kpi_model - kpi_baseline) / (kpi_reference -
+  kpi_baseline), 0, 1)`), `line_down_recovery.reference_episode()` runs both the heuristic's and
+  the baseline's full episode and keeps whichever achieves the lower tardiness — provably never
+  worse than the baseline bound, at the cost of occasionally tying it instead of improving on
+  it. Re-swept 1000 seeds x 2 difficulties (2000 instances) after the fix: reference bound is
+  never worse than baseline (0 counterexamples) and is strictly better on 1987/2000 (99.35%).
+- Tests: `tests/test_policies.py` (hand-verified baseline round-robin-queue and down-machine-
+  skip cases, hand-verified reference capacity-x-priority pairing case worked out by hand from
+  the WSPT priority formula, down/unreleased/completed-job exclusion, no-double-booking,
+  `simulate_episode` cross-checked against direct sequential `engine.step` calls plus a
+  determinism check) and `tests/test_line_down_recovery.py` (generator determinism/distinct-
+  seeds/invalid-difficulty, job/machine counts per difficulty, exactly-one-down-machine-within-
+  horizon, all-jobs-released-at-zero, hand-verified `total_weighted_tardiness` unfinished-job
+  penalty, a 500-seed x 2-difficulty sweep (1000 instances) asserting zero illegal actions and
+  zero cases where reference is worse than baseline, plus a >90% strictly-better assertion so
+  the bound is meaningfully non-degenerate, and an episode-level determinism check). Full suite:
+  726 passed (was 705 before this unit).
+- No task-schema/generator/harness wiring in this unit — per the roadmap unit's own scope
+  (scenario + baseline/reference policies only; the `simulated` scorer, KPI-delta
+  normalization, and L4/L5 harness modes are units 2.4/2.5), there is nothing yet for
+  `harness/run.py` or `schemas/task.schema.json` to touch.
 
 ### 2026-08-03 — Unit 2.1: Simulator engine
 - Reconciled stale state: `1.14` (PR #34) had already merged to `main` (verified the merge

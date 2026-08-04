@@ -56,9 +56,9 @@ _Build one generator+scorer unit at a time; test each scorer before moving on._
   per-tier breakdowns. **Acceptance:** a reproducible leaderboard exists in `results/`.
 
 ## Phase 2 — Family C (Simulated): decision & orchestration
-- [~] **2.1 — Simulator engine.** Deterministic `engine.step(state, action) -> state, kpis`.
+- [x] **2.1 — Simulator engine.** Deterministic `engine.step(state, action) -> state, kpis`.
   **Acceptance:** same seed + actions → same KPIs (tested).
-- [ ] **2.2 — Scenario: line-down recovery** + baseline & reference policies. KPI: total
+- [~] **2.2 — Scenario: line-down recovery** + baseline & reference policies. KPI: total
   weighted tardiness. **Acceptance:** both score bounds work.
 - [ ] **2.3 — Scenario: demand spike / rebalance** + baseline & reference policies. KPI:
   service level + overtime cost.
