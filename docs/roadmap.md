@@ -58,9 +58,9 @@ _Build one generator+scorer unit at a time; test each scorer before moving on._
 ## Phase 2 — Family C (Simulated): decision & orchestration
 - [x] **2.1 — Simulator engine.** Deterministic `engine.step(state, action) -> state, kpis`.
   **Acceptance:** same seed + actions → same KPIs (tested).
-- [~] **2.2 — Scenario: line-down recovery** + baseline & reference policies. KPI: total
+- [x] **2.2 — Scenario: line-down recovery** + baseline & reference policies. KPI: total
   weighted tardiness. **Acceptance:** both score bounds work.
-- [ ] **2.3 — Scenario: demand spike / rebalance** + baseline & reference policies. KPI:
+- [~] **2.3 — Scenario: demand spike / rebalance** + baseline & reference policies. KPI:
   service level + overtime cost.
 - [ ] **2.4 — L4 single-decision mode + simulated scorer.** KPI-delta normalization to [0,1].
 - [ ] **2.5 — L5 agentic tool interface** (`simulator/tools.py`), capped turns, trajectory
