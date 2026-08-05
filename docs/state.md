@@ -4,13 +4,62 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 2 (Family C — simulated decision & orchestration) — in progress.
-- **Reconciled:** `2.1` (PR #36) had already merged to `main` (CI green on the merge commit)
+- **Reconciled:** `2.2` (PR #38) had already merged to `main` (CI green on the merge commit)
   but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
-- **In flight:** `2.2 — Scenario: line-down recovery` — PR open.
-- **Next unit (after 2.2 merges):** `2.3 — Scenario: demand spike / rebalance` (Phase 2, Family C).
+- **In flight:** `2.3 — Scenario: demand spike / rebalance` — PR open.
+- **Next unit (after 2.3 merges):** `2.4 — L4 single-decision mode + simulated scorer` (Phase 2,
+  Family C).
 - **Blockers:** none.
 
 ## Log
+
+### 2026-08-05 — Unit 2.3: Scenario: demand spike / rebalance + baseline & reference policies
+- Reconciled stale state: `2.2` (PR #38) had already merged to `main` (verified the merge
+  commit's CI run is green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- Added `simulator/scenarios/demand_spike_rebalance.py`: a seeded scenario generator built on
+  `engine.step`'s contract, same as unit 2.2. `generate(seed, difficulty)` produces an initial
+  state with a base demand load released at t=0 (generous due-date slack) plus a batch of urgent
+  spike jobs released at a randomized mid-shift step (tight due-date slack) — no machine ever
+  starts down (unlike line-down recovery, the pressure here is demand volume, not machine
+  availability). `total_cost(final_state)` is this scenario's KPI: actual overtime cost incurred
+  plus a flat, weight-scaled penalty for every job not completed on time — a hit/miss
+  "missed-the-order" framing (service level), deliberately different from unit 2.2's
+  lateness-proportional `total_weighted_tardiness`. `service_level(final_state)` reports the
+  weighted fraction of demand fulfilled on time as a separate, human-readable readout alongside
+  the combined cost scalar.
+- Added `_reference_policy_with_overtime` in the scenario module (kept scenario-specific rather
+  than added to `simulator/policies.py`, since the overtime decision is this scenario's whole
+  point, unlike line-down recovery where neither policy ever needed overtime): layers a targeted
+  overtime rule on top of `policies.reference_policy`'s scenario-agnostic WSPT-style assignment —
+  a machine goes into overtime only when normal capacity can't make the assigned job's due date
+  but overtime capacity, sustained for the remaining time, would; a job already too far behind to
+  make its due date even with overtime is left at normal capacity (paying overtime there buys no
+  service-level benefit, only wasted cost). `reference_episode` keeps the same
+  never-worse-than-baseline safety net unit 2.2 established: it falls back to
+  `baseline_episode`'s own trajectory whenever the heuristic's `total_cost` would otherwise come
+  out worse. Empirically this fallback is exercised more often here than in line-down recovery
+  (raw heuristic underperforms baseline on ~6% of a 2000-instance seed x difficulty sweep, vs.
+  line-down's ~0.05%) — overtime is a genuine two-sided bet (it can be spent on a job that ends
+  up late anyway), so a heuristic that sometimes loses that bet is expected; the fallback is what
+  makes the bound provably sound regardless.
+- Verified empirically (not just asserted) that the scenario is actually capacity-constrained:
+  across the same 2000-instance sweep, `baseline_policy` (which never uses overtime) averages
+  ~47% weighted service level, `reference_episode` averages ~70% — a real, non-trivial
+  improvement, not a scenario where either bound trivially hits 100%.
+- Tests: `tests/test_demand_spike_rebalance.py` — generator determinism/distinct-seeds/invalid-
+  difficulty, job/machine counts per difficulty, base-jobs-at-zero vs. spike-jobs-mid-shift
+  release timing, no-machine-starts-down, hand-verified `service_level` and `total_cost` cases,
+  hand-verified `_reference_policy_with_overtime` decision cases (triggers when worthwhile, skips
+  when normal capacity already suffices, skips when hopeless even with overtime, skips when
+  already overdue), a 500-seed x 2-difficulty sweep (1000 instances, 2000 (seed, difficulty)
+  combinations) asserting zero illegal actions, zero cases where reference is worse than
+  baseline, a >80% strictly-better assertion, the capacity-pressure and service-level-improvement
+  checks above, and an episode-level determinism check. Full suite: 748 passed (was 726 before
+  this unit).
+- No task-schema/generator/harness wiring in this unit — per the roadmap unit's own scope
+  (scenario + baseline/reference policies only; the `simulated` scorer, KPI-delta normalization,
+  and L4/L5 harness modes are units 2.4/2.5), there is nothing yet for `harness/run.py` or
+  `schemas/task.schema.json` to touch — same scoping note as unit 2.2.
 
 ### 2026-08-04 — Unit 2.2: Scenario: line-down recovery + baseline & reference policies
 - Reconciled stale state: `2.1` (PR #36) had already merged to `main` (verified the merge
