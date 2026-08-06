@@ -4,11 +4,21 @@ Uses a fake Model (no network call) so this runs in CI without an API key; the r
 Anthropic adapter is exercised by `python -m harness.run --generator oee --seed <n> --model
 anthropic` when an ANTHROPIC_API_KEY is available.
 """
+import copy
+import json
+
 import pytest
 
+from generators.simulated_decision import (
+    DemandSpikeRebalanceDecisionGenerator,
+    LineDownRecoveryDecisionGenerator,
+)
 from harness.adapters.base import Model, ModelResponse
 from harness.run import run
 from harness.validate import validate_result
+from scorers.simulated import SimulatedScorer
+from simulator import engine, policies
+from simulator.scenarios import demand_spike_rebalance as dsr
 
 
 class FakeModel(Model):
@@ -233,3 +243,80 @@ def test_run_scores_partial_standard_cost_variance_answer_as_fraction_correct():
     )
     validate_result(result)
     assert result["score"] == pytest.approx(2 / 4)
+
+
+def _plan_json(initial_state: dict, policy_fn, horizon: int) -> str:
+    """Drive `policy_fn` for `horizon` steps and JSON-encode the actions taken, to stand in for
+    a model's one-shot plan (unit 2.4's L4 single-decision answer format)."""
+    state = copy.deepcopy(initial_state)
+    actions = []
+    for _ in range(horizon):
+        action = policy_fn(state)
+        actions.append(action)
+        state, _ = engine.step(state, action)
+    return json.dumps(actions)
+
+
+def test_run_scores_line_down_recovery_decision_task_end_to_end():
+    task = LineDownRecoveryDecisionGenerator().generate(seed=1, difficulty="standard")
+    gt = task["ground_truth"]
+    plan = _plan_json(gt["initial_state"], policies.reference_policy, gt["horizon"])
+
+    result = run(
+        "line_down_recovery_decision",
+        seed=1,
+        model_name="anthropic",
+        model=FakeModel(answer=plan),
+    )
+    validate_result(result)
+    assert result["task_id"] == "simulated.line_down_recovery.000001"
+    assert result["parse_failure"] is False
+    assert result["parsed_answer"] == json.loads(plan)
+    # The harness's parse -> score pipeline must agree with calling the scorer directly.
+    assert result["score"] == SimulatedScorer().score(task, json.loads(plan))
+
+
+def test_run_scores_demand_spike_rebalance_decision_task_end_to_end():
+    task = DemandSpikeRebalanceDecisionGenerator().generate(seed=1, difficulty="standard")
+    gt = task["ground_truth"]
+    plan = _plan_json(gt["initial_state"], dsr._reference_policy_with_overtime, gt["horizon"])
+
+    result = run(
+        "demand_spike_rebalance_decision",
+        seed=1,
+        model_name="anthropic",
+        model=FakeModel(answer=plan),
+    )
+    validate_result(result)
+    assert result["task_id"] == "simulated.demand_spike_rebalance.000001"
+    assert result["parse_failure"] is False
+    assert result["score"] == SimulatedScorer().score(task, json.loads(plan))
+
+
+def test_run_flags_parse_failure_for_simulated_task_when_answer_tag_missing():
+    class NoTagModel(Model):
+        name = "no-tag-model"
+
+        def complete(self, prompt, tools=None, **kwargs):
+            return ModelResponse(text="here is my plan", latency_ms=1)
+
+    result = run(
+        "line_down_recovery_decision", seed=1, model_name="anthropic", model=NoTagModel()
+    )
+    validate_result(result)
+    assert result["parse_failure"] is True
+    assert result["parsed_answer"] is None
+    assert result["score"] == 0.0
+
+
+def test_run_scores_0_for_simulated_task_with_illegal_plan():
+    # Valid JSON, wrong shape (missing steps) -> the scorer rejects it, not the parser.
+    result = run(
+        "line_down_recovery_decision",
+        seed=1,
+        model_name="anthropic",
+        model=FakeModel(answer="[]"),
+    )
+    validate_result(result)
+    assert result["parse_failure"] is False
+    assert result["score"] == 0.0
