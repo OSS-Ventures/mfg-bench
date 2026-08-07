@@ -60,9 +60,9 @@ _Build one generator+scorer unit at a time; test each scorer before moving on._
   **Acceptance:** same seed + actions → same KPIs (tested).
 - [x] **2.2 — Scenario: line-down recovery** + baseline & reference policies. KPI: total
   weighted tardiness. **Acceptance:** both score bounds work.
-- [~] **2.3 — Scenario: demand spike / rebalance** + baseline & reference policies. KPI:
+- [x] **2.3 — Scenario: demand spike / rebalance** + baseline & reference policies. KPI:
   service level + overtime cost.
-- [ ] **2.4 — L4 single-decision mode + simulated scorer.** KPI-delta normalization to [0,1].
+- [~] **2.4 — L4 single-decision mode + simulated scorer.** KPI-delta normalization to [0,1].
 - [ ] **2.5 — L5 agentic tool interface** (`simulator/tools.py`), capped turns, trajectory
   logging. **Acceptance:** models complete L4 and L5 and receive normalized scores.
 

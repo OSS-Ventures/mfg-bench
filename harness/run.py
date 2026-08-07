@@ -21,6 +21,10 @@ from generators.mrp import MRPGenerator
 from generators.oee import OEEGenerator
 from generators.quality_economics import QualityEconomicsGenerator
 from generators.scheduling import SchedulingGenerator
+from generators.simulated_decision import (
+    DemandSpikeRebalanceDecisionGenerator,
+    LineDownRecoveryDecisionGenerator,
+)
 from generators.spc import SPCGenerator
 from generators.standard_cost_variance import StandardCostVarianceGenerator
 from generators.toc import TOCGenerator
@@ -30,6 +34,7 @@ from harness.adapters.google import GoogleModel
 from harness.adapters.openai import OpenAIModel
 from harness.validate import validate_result, validate_task
 from scorers.numeric import NumericScorer
+from scorers.simulated import SimulatedScorer
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -43,8 +48,10 @@ GENERATORS = {
     "quality_economics": QualityEconomicsGenerator,
     "fmea": FMEAGenerator,
     "standard_cost_variance": StandardCostVarianceGenerator,
+    "line_down_recovery_decision": LineDownRecoveryDecisionGenerator,
+    "demand_spike_rebalance_decision": DemandSpikeRebalanceDecisionGenerator,
 }
-SCORERS = {"numeric": NumericScorer}
+SCORERS = {"numeric": NumericScorer, "simulated": SimulatedScorer}
 ADAPTERS = {"anthropic": AnthropicModel, "openai": OpenAIModel, "google": GoogleModel}
 
 
@@ -101,6 +108,37 @@ def parse_numeric_answer(
     return (values[0] if num_parts == 1 else values), False
 
 
+def build_simulated_prompt(task: dict[str, Any], answer_tag: str) -> str:
+    horizon = task["ground_truth"]["horizon"]
+    instruction = (
+        f"Respond with a single JSON list of exactly {horizon} objects, one per time step in "
+        f"order (step 0 first, step {horizon - 1} last). Each object has the form "
+        '{"assignments": {"<machine_id>": "<job_id>", ...}, "overtime": {"<machine_id>": true, '
+        '...}}. Omit a machine from "assignments" (or map it to null) to leave it idle that '
+        'step; omit "overtime" entirely, or a machine from it, to run that machine at normal '
+        f"capacity. Respond with only that JSON list inside <{answer_tag}></{answer_tag}> tags, "
+        "no other text."
+    )
+    return f"{task['prompt']}\n\n{instruction}"
+
+
+def parse_simulated_answer(raw_response: str, answer_tag: str) -> tuple[Any, bool]:
+    """Parse the model's action plan out of the `<answer_tag>` block: a JSON list (of anything
+    -- per-step structural validity is `scorers.simulated.SimulatedScorer`'s concern, since an
+    illegal-but-well-formed plan is a scoring outcome, not a parse failure). A missing tag or
+    non-JSON-list content is a parse failure: `(None, True)`."""
+    match = re.search(rf"<{answer_tag}>(.*?)</{answer_tag}>", raw_response, re.DOTALL)
+    if not match:
+        return None, True
+    try:
+        parsed = json.loads(match.group(1).strip())
+    except json.JSONDecodeError:
+        return None, True
+    if not isinstance(parsed, list):
+        return None, True
+    return parsed, False
+
+
 def build_model(model_name: str, config: dict) -> Model:
     model_config = next(m for m in config["models"] if m["adapter"] == model_name)
     adapter_cls = ADAPTERS[model_config["adapter"]]
@@ -123,12 +161,17 @@ def run(
     scorer = SCORERS[task["scorer"]]()
     model = model if model is not None else build_model(model_name, config)
 
-    num_parts = num_parts_of(task)
-    prompt = build_prompt(task, config["answer_tag"], num_parts)
-    response = model.complete(prompt)
-    parsed_answer, parse_failure = parse_numeric_answer(
-        response.text, config["answer_tag"], num_parts
-    )
+    if task["answer_format"] == "simulated":
+        prompt = build_simulated_prompt(task, config["answer_tag"])
+        response = model.complete(prompt)
+        parsed_answer, parse_failure = parse_simulated_answer(response.text, config["answer_tag"])
+    else:
+        num_parts = num_parts_of(task)
+        prompt = build_prompt(task, config["answer_tag"], num_parts)
+        response = model.complete(prompt)
+        parsed_answer, parse_failure = parse_numeric_answer(
+            response.text, config["answer_tag"], num_parts
+        )
     score = 0.0 if parse_failure else scorer.score(task, parsed_answer)
 
     result = {

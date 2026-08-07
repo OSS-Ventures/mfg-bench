@@ -1,6 +1,12 @@
 """Unit tests for harness/run.py's answer parsing: single-part, multi-part, and parse failures.
 """
-from harness.run import build_prompt, num_parts_of, parse_numeric_answer
+from harness.run import (
+    build_prompt,
+    build_simulated_prompt,
+    num_parts_of,
+    parse_numeric_answer,
+    parse_simulated_answer,
+)
 
 
 def test_parse_single_part_answer():
@@ -73,3 +79,35 @@ def test_build_prompt_multi_part_instructs_comma_separated_answers():
     prompt = build_prompt(task, "answer", num_parts=3)
     assert "comma-separated" in prompt
     assert "<answer>1, 2, 3</answer>" in prompt
+
+
+def test_parse_simulated_answer_valid_json_list():
+    raw = '<answer>[{"assignments": {"m0": "j0"}}, {"assignments": {}}]</answer>'
+    parsed, parse_failure = parse_simulated_answer(raw, "answer")
+    assert parsed == [{"assignments": {"m0": "j0"}}, {"assignments": {}}]
+    assert parse_failure is False
+
+
+def test_parse_simulated_answer_missing_tag_is_failure():
+    parsed, parse_failure = parse_simulated_answer("no tags here", "answer")
+    assert parsed is None
+    assert parse_failure is True
+
+
+def test_parse_simulated_answer_invalid_json_is_failure():
+    parsed, parse_failure = parse_simulated_answer("<answer>not json</answer>", "answer")
+    assert parsed is None
+    assert parse_failure is True
+
+
+def test_parse_simulated_answer_non_list_json_is_failure():
+    parsed, parse_failure = parse_simulated_answer('<answer>{"assignments": {}}</answer>', "answer")
+    assert parsed is None
+    assert parse_failure is True
+
+
+def test_build_simulated_prompt_instructs_json_plan_of_the_right_horizon():
+    task = {"prompt": "Decide the schedule.", "ground_truth": {"horizon": 3}}
+    prompt = build_simulated_prompt(task, "answer")
+    assert "exactly 3 objects" in prompt
+    assert "<answer></answer>" in prompt
