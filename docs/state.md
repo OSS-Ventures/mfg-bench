@@ -636,8 +636,7 @@ The autonomous loop appends here every iteration. Newest entries on top.
   computes Gross Requirements (demand x qty-per), nets them period-by-period against on-hand +
   scheduled receipts (carrying any surplus forward, flooring shortfall-covered on-hand at 0),
   and derives the Planned Order Release period for period 4's receipt from the lead time
-  (`NUM_PERIODS - lead_time`). Ground truth is a 5-part `numeric` answer (5-part `numeric`
-  answer (4 net requirements +
+  (`NUM_PERIODS - lead_time`). Ground truth is a 5-part `numeric` answer (4 net requirements +
   1 release period), reusing the multi-part `scorers/numeric.py` scorer hardened in unit 1.1 —
   no new scorer code needed.
 - Wired `mrp` into `harness/run.py`'s `GENERATORS` registry (`--generator mrp` now works
