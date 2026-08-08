@@ -23,7 +23,9 @@ from generators.quality_economics import QualityEconomicsGenerator
 from generators.scheduling import SchedulingGenerator
 from generators.simulated_decision import (
     DemandSpikeRebalanceDecisionGenerator,
+    DemandSpikeRebalanceOrchestrationGenerator,
     LineDownRecoveryDecisionGenerator,
+    LineDownRecoveryOrchestrationGenerator,
 )
 from generators.spc import SPCGenerator
 from generators.standard_cost_variance import StandardCostVarianceGenerator
@@ -35,6 +37,7 @@ from harness.adapters.openai import OpenAIModel
 from harness.validate import validate_result, validate_task
 from scorers.numeric import NumericScorer
 from scorers.simulated import SimulatedScorer
+from simulator.tools import TOOL_DEFINITIONS, SimulationSession, dispatch
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -50,6 +53,8 @@ GENERATORS = {
     "standard_cost_variance": StandardCostVarianceGenerator,
     "line_down_recovery_decision": LineDownRecoveryDecisionGenerator,
     "demand_spike_rebalance_decision": DemandSpikeRebalanceDecisionGenerator,
+    "line_down_recovery_orchestration": LineDownRecoveryOrchestrationGenerator,
+    "demand_spike_rebalance_orchestration": DemandSpikeRebalanceOrchestrationGenerator,
 }
 SCORERS = {"numeric": NumericScorer, "simulated": SimulatedScorer}
 ADAPTERS = {"anthropic": AnthropicModel, "openai": OpenAIModel, "google": GoogleModel}
@@ -139,6 +144,35 @@ def parse_simulated_answer(raw_response: str, answer_tag: str) -> tuple[Any, boo
     return parsed, False
 
 
+def run_orchestration(
+    task: dict[str, Any], model: Model, scorer: SimulatedScorer
+) -> tuple[Any, list[dict], float]:
+    """L5 path (unit 2.5): drive the task's scenario through a live `SimulationSession` instead
+    of parsing a one-shot `<answer>` block. The task's own prompt already explains the tool
+    interaction, so it is sent as-is; `model.complete()` (for an adapter that implements the
+    agentic loop, per `harness.adapters.base.Model.complete`'s docstring) calls `tool_executor`
+    for every tool use until it stops or the turn budget is spent. The score comes from whatever
+    final state the session actually reached -- never from the model's own account of what it
+    did.
+    """
+    ground_truth = task["ground_truth"]
+    session = SimulationSession(
+        ground_truth["initial_state"], ground_truth["horizon"], ground_truth["max_turns"]
+    )
+
+    def tool_executor(tool_name: str, tool_input: Optional[dict]) -> dict:
+        return dispatch(session, tool_name, tool_input)
+
+    response = model.complete(
+        task["prompt"],
+        tools=TOOL_DEFINITIONS,
+        tool_executor=tool_executor,
+        max_turns=ground_truth["max_turns"],
+    )
+    score = scorer.score_state(task, session.state)
+    return response, session.history, score
+
+
 def build_model(model_name: str, config: dict) -> Model:
     model_config = next(m for m in config["models"] if m["adapter"] == model_name)
     adapter_cls = ADAPTERS[model_config["adapter"]]
@@ -161,10 +195,14 @@ def run(
     scorer = SCORERS[task["scorer"]]()
     model = model if model is not None else build_model(model_name, config)
 
-    if task["answer_format"] == "simulated":
+    if task["answer_format"] == "simulated" and task["reasoning_tier"] == "L5":
+        response, parsed_answer, score = run_orchestration(task, model, scorer)
+        parse_failure = False
+    elif task["answer_format"] == "simulated":
         prompt = build_simulated_prompt(task, config["answer_tag"])
         response = model.complete(prompt)
         parsed_answer, parse_failure = parse_simulated_answer(response.text, config["answer_tag"])
+        score = 0.0 if parse_failure else scorer.score(task, parsed_answer)
     else:
         num_parts = num_parts_of(task)
         prompt = build_prompt(task, config["answer_tag"], num_parts)
@@ -172,7 +210,7 @@ def run(
         parsed_answer, parse_failure = parse_numeric_answer(
             response.text, config["answer_tag"], num_parts
         )
-    score = 0.0 if parse_failure else scorer.score(task, parsed_answer)
+        score = 0.0 if parse_failure else scorer.score(task, parsed_answer)
 
     result = {
         "task_id": task["id"],

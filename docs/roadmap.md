@@ -62,8 +62,8 @@ _Build one generator+scorer unit at a time; test each scorer before moving on._
   weighted tardiness. **Acceptance:** both score bounds work.
 - [x] **2.3 — Scenario: demand spike / rebalance** + baseline & reference policies. KPI:
   service level + overtime cost.
-- [~] **2.4 — L4 single-decision mode + simulated scorer.** KPI-delta normalization to [0,1].
-- [ ] **2.5 — L5 agentic tool interface** (`simulator/tools.py`), capped turns, trajectory
+- [x] **2.4 — L4 single-decision mode + simulated scorer.** KPI-delta normalization to [0,1].
+- [~] **2.5 — L5 agentic tool interface** (`simulator/tools.py`), capped turns, trajectory
   logging. **Acceptance:** models complete L4 and L5 and receive normalized scores.
 
 ## Phase 3 — Family B (Source-grounded)

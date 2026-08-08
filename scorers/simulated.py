@@ -19,6 +19,13 @@ scoring outcome -- the worst one.
 `reference_episode` can fall back to the baseline trajectory) leaves no daylight to normalize
 into; that degenerate case scores 1.0 only if the model's plan reproduces that exact KPI, else
 0.0, rather than dividing by zero.
+
+`score_state()` is the L5 (agentic orchestration, unit 2.5) counterpart to `score()`'s L4 path:
+an L5 task is driven turn-by-turn through a `simulator.tools.SimulationSession`, which already
+calls the real `engine.step` for every accepted action -- there is no separate one-shot plan to
+replay, only whatever final state the session actually reached (by horizon, or by running out of
+turns). Both paths share the same KPI-delta normalization against a task's `kpi_baseline`/
+`kpi_reference` bounds.
 """
 from __future__ import annotations
 
@@ -44,8 +51,20 @@ class SimulatedScorer(Scorer):
         if kpi_model is None:
             return 0.0
 
-        kpi_baseline = ground_truth["kpi_baseline"]
-        kpi_reference = ground_truth["kpi_reference"]
+        return self._normalize(
+            kpi_model, ground_truth["kpi_baseline"], ground_truth["kpi_reference"]
+        )
+
+    def score_state(self, task: dict[str, Any], final_state: dict[str, Any]) -> float:
+        ground_truth = task["ground_truth"]
+        scenario = SCENARIOS[ground_truth["scenario"]]
+        kpi_model = scenario["kpi"](final_state, ground_truth["horizon"])
+        return self._normalize(
+            kpi_model, ground_truth["kpi_baseline"], ground_truth["kpi_reference"]
+        )
+
+    @staticmethod
+    def _normalize(kpi_model: float, kpi_baseline: float, kpi_reference: float) -> float:
         denominator = kpi_reference - kpi_baseline
         if denominator == 0:
             return 1.0 if abs(kpi_model - kpi_baseline) < _TIE_TOLERANCE else 0.0

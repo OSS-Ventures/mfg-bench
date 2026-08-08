@@ -23,6 +23,11 @@ class OpenAIModel(Model):
         self._client = openai.OpenAI()
 
     def complete(self, prompt: str, tools: Optional[list] = None, **kwargs: Any) -> ModelResponse:
+        # Native tool-calling (L5 orchestration) is not yet implemented for this adapter; drop
+        # the L5-only kwargs and fall back to one ordinary completion rather than raising (see
+        # harness.adapters.base.Model.complete's docstring).
+        kwargs.pop("tool_executor", None)
+        kwargs.pop("max_turns", None)
         start = time.monotonic()
         response = self._client.chat.completions.create(
             model=self.name,
