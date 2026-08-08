@@ -21,6 +21,7 @@ from scorers.simulated import SimulatedScorer
 from simulator import engine, policies
 from simulator.scenarios import demand_spike_rebalance as dsr
 from simulator.scenarios import line_down_recovery as ldr
+from simulator.tools import SimulationSession
 
 SCORER = SimulatedScorer()
 
@@ -246,3 +247,103 @@ def test_demand_spike_rebalance_baseline_and_reference_plans_score_their_bounds(
     )
     if dsr.total_cost(reference_final) == gt["kpi_reference"]:
         assert SCORER.score(task, reference_plan) == 1.0
+
+
+# --- score_state: the L5 (agentic orchestration, unit 2.5) counterpart to score() ----------
+# score_state() takes an already-reached final_state directly (as `simulator.tools
+# .SimulationSession` produces) instead of replaying a plan -- these reuse the exact same
+# hand-verified fixtures as score()'s tests above, just driving them through `engine.step`
+# by hand first to get a final_state instead of handing the plan to the scorer.
+
+
+def _final_state_from_plan(initial_state: dict, plan: list[dict]) -> dict:
+    state = copy.deepcopy(initial_state)
+    for action in plan:
+        state, _ = engine.step(state, action)
+    return state
+
+
+def test_score_state_matching_the_reference_kpi_scores_1():
+    task = _ldr_task(kpi_baseline=4.0, kpi_reference=0.0, horizon=4)
+    final_state = _final_state_from_plan(task["ground_truth"]["initial_state"], FULL_PLAN)
+    assert SCORER.score_state(task, final_state) == 1.0
+
+
+def test_score_state_matching_the_baseline_kpi_scores_0():
+    task = _ldr_task(kpi_baseline=4.0, kpi_reference=0.0, horizon=4)
+    final_state = _final_state_from_plan(task["ground_truth"]["initial_state"], IDLE_PLAN)
+    assert SCORER.score_state(task, final_state) == 0.0
+
+
+def test_score_state_midway_between_bounds_scores_midway():
+    task = _ldr_task(kpi_baseline=4.0, kpi_reference=0.0, horizon=4)
+    final_state = _final_state_from_plan(task["ground_truth"]["initial_state"], PARTIAL_PLAN)
+    assert SCORER.score_state(task, final_state) == 0.5
+
+
+def test_score_state_an_untouched_initial_state_ties_the_baseline_bound_here():
+    # A session that never submits any action leaves final_state == initial_state; for this
+    # fixture that's exactly the idle-plan case (no job ever assigned), so it scores 0.0 too.
+    task = _ldr_task(kpi_baseline=4.0, kpi_reference=0.0, horizon=4)
+    assert SCORER.score_state(task, task["ground_truth"]["initial_state"]) == 0.0
+
+
+def test_score_state_tie_bounds_scores_1_only_on_exact_match():
+    task = _ldr_task(kpi_baseline=4.0, kpi_reference=4.0, horizon=4)
+    tied_state = _final_state_from_plan(task["ground_truth"]["initial_state"], IDLE_PLAN)
+    assert SCORER.score_state(task, tied_state) == 1.0
+    off_state = _final_state_from_plan(task["ground_truth"]["initial_state"], PARTIAL_PLAN)
+    assert SCORER.score_state(task, off_state) == 0.0
+
+
+@pytest.mark.parametrize("seed,difficulty", SWEEP)
+def test_score_state_via_simulation_session_reproduces_line_down_recovery_bounds(seed, difficulty):
+    """Drives each scenario's real baseline/reference action sequence through a live
+    `SimulationSession` (unit 2.5's actual L5 harness path) instead of `engine.step` directly,
+    and confirms `score_state` on the session's own final state reproduces the same 0.0/1.0
+    bounds the plan-replay sweep above already established for `score()`."""
+    task = LineDownRecoveryDecisionGenerator().generate(seed=seed, difficulty=difficulty)
+    gt = task["ground_truth"]
+    if gt["kpi_reference"] == gt["kpi_baseline"]:
+        pytest.skip("degenerate seed where reference ties baseline; covered by the hand-verified tie case")
+
+    for policy_fn, expected in ((policies.baseline_policy, 0.0), (policies.reference_policy, 1.0)):
+        final, _ = policies.simulate_episode(gt["initial_state"], policy_fn, gt["horizon"])
+        if ldr.total_weighted_tardiness(final, gt["horizon"]) != gt[
+            "kpi_baseline" if expected == 0.0 else "kpi_reference"
+        ]:
+            continue
+
+        session = SimulationSession(gt["initial_state"], gt["horizon"], max_turns=10 * gt["horizon"])
+        state = copy.deepcopy(gt["initial_state"])
+        for _ in range(gt["horizon"]):
+            action = policy_fn(state)
+            result = session.submit_action(action)
+            assert "error" not in result
+            state, _ = engine.step(state, action)
+
+        assert SCORER.score_state(task, session.state) == expected
+
+
+@pytest.mark.parametrize("seed,difficulty", SWEEP)
+def test_score_state_via_simulation_session_reproduces_demand_spike_rebalance_bounds(seed, difficulty):
+    task = DemandSpikeRebalanceDecisionGenerator().generate(seed=seed, difficulty=difficulty)
+    gt = task["ground_truth"]
+    if gt["kpi_reference"] == gt["kpi_baseline"]:
+        pytest.skip("degenerate seed where reference ties baseline; covered by the hand-verified tie case")
+
+    for policy_fn, expected in (
+        (policies.baseline_policy, 0.0),
+        (dsr._reference_policy_with_overtime, 1.0),
+    ):
+        final, _ = policies.simulate_episode(gt["initial_state"], policy_fn, gt["horizon"])
+        if dsr.total_cost(final) != gt["kpi_baseline" if expected == 0.0 else "kpi_reference"]:
+            continue
+
+        session = SimulationSession(gt["initial_state"], gt["horizon"], max_turns=10 * gt["horizon"])
+        for _ in range(gt["horizon"]):
+            action = policy_fn(session.state)
+            result = session.submit_action(action)
+            assert "error" not in result
+
+        assert SCORER.score_state(task, session.state) == expected

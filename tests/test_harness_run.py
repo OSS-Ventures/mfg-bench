@@ -11,7 +11,9 @@ import pytest
 
 from generators.simulated_decision import (
     DemandSpikeRebalanceDecisionGenerator,
+    DemandSpikeRebalanceOrchestrationGenerator,
     LineDownRecoveryDecisionGenerator,
+    LineDownRecoveryOrchestrationGenerator,
 )
 from harness.adapters.base import Model, ModelResponse
 from harness.run import run
@@ -19,6 +21,7 @@ from harness.validate import validate_result
 from scorers.simulated import SimulatedScorer
 from simulator import engine, policies
 from simulator.scenarios import demand_spike_rebalance as dsr
+from simulator.tools import SimulationSession
 
 
 class FakeModel(Model):
@@ -320,3 +323,113 @@ def test_run_scores_0_for_simulated_task_with_illegal_plan():
     validate_result(result)
     assert result["parse_failure"] is False
     assert result["score"] == 0.0
+
+
+# --- L5 agentic orchestration (unit 2.5) --------------------------------------------------
+# A FakeModel here must itself play the role of the agentic loop an adapter would normally run
+# (harness.adapters.anthropic.AnthropicModel._run_agentic_loop is tested directly and separately
+# in tests/test_anthropic_adapter.py) -- it calls `tool_executor` the same way a real tool-use
+# loop would, so `harness.run.run_orchestration`'s wiring (constructing the SimulationSession,
+# handing it a tool_executor, scoring the session's own final state) can be exercised without any
+# network call.
+
+
+class FakePolicyOrchestrationModel(Model):
+    """Drives `policy_fn` through `tool_executor` for exactly `horizon` submit_action calls --
+    stands in for a model that behaves like a known policy over the tool interface."""
+
+    name = "fake-orchestration-model"
+
+    def __init__(self, policy_fn, horizon):
+        self._policy_fn = policy_fn
+        self._horizon = horizon
+
+    def complete(self, prompt, tools=None, tool_executor=None, max_turns=None, **kwargs):
+        trajectory = []
+        # The FakeModel doesn't see the session's real state directly (that would defeat the
+        # point of going through tools) -- it queries get_state each step, exactly like a real
+        # tool-calling model would, and feeds the observed state to the stand-in policy.
+        for _ in range(self._horizon):
+            observed = tool_executor("get_state", {})
+            trajectory.append({"tool": "get_state", "result": observed})
+            if observed.get("done"):
+                break
+            state_for_policy = {
+                "time": observed["time"],
+                "jobs": observed["jobs"],
+                "machines": observed["machines"],
+                "cumulative": observed["cumulative"],
+            }
+            action = self._policy_fn(state_for_policy)
+            result = tool_executor("submit_action", action)
+            trajectory.append({"tool": "submit_action", "action": action, "result": result})
+        return ModelResponse(text="done", latency_ms=1, trajectory=trajectory)
+
+
+class NeverCallsToolsModel(Model):
+    name = "never-calls-tools-model"
+
+    def complete(self, prompt, tools=None, tool_executor=None, max_turns=None, **kwargs):
+        return ModelResponse(text="I decline to act.", latency_ms=1, trajectory=None)
+
+
+def test_run_scores_line_down_recovery_orchestration_task_end_to_end():
+    task = LineDownRecoveryOrchestrationGenerator().generate(seed=1, difficulty="standard")
+    gt = task["ground_truth"]
+
+    result = run(
+        "line_down_recovery_orchestration",
+        seed=1,
+        model_name="anthropic",
+        model=FakePolicyOrchestrationModel(policies.reference_policy, gt["horizon"]),
+    )
+    validate_result(result)
+    assert result["task_id"] == "orchestration.line_down_recovery.000001"
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+    # history is the sequence of actions actually applied through the session's tools.
+    assert len(result["parsed_answer"]) == gt["horizon"]
+    assert result["trajectory"] is not None and len(result["trajectory"]) > 0
+
+
+def test_run_scores_demand_spike_rebalance_orchestration_task_end_to_end():
+    task = DemandSpikeRebalanceOrchestrationGenerator().generate(seed=1, difficulty="standard")
+    gt = task["ground_truth"]
+
+    result = run(
+        "demand_spike_rebalance_orchestration",
+        seed=1,
+        model_name="anthropic",
+        model=FakePolicyOrchestrationModel(dsr._reference_policy_with_overtime, gt["horizon"]),
+    )
+    validate_result(result)
+    assert result["task_id"] == "orchestration.demand_spike_rebalance.000001"
+    assert result["score"] == 1.0
+
+
+def test_run_scores_0_for_orchestration_task_when_model_never_calls_tools():
+    # A model that ignores the tool interface entirely leaves the session at its initial
+    # state -- a legitimate (if poor) result to score, not a parse failure or a crash.
+    result = run(
+        "line_down_recovery_orchestration",
+        seed=1,
+        model_name="anthropic",
+        model=NeverCallsToolsModel(),
+    )
+    validate_result(result)
+    assert result["parse_failure"] is False
+    assert result["parsed_answer"] == []
+    assert result["score"] == 0.0
+
+
+def test_run_orchestration_score_matches_calling_score_state_directly():
+    task = LineDownRecoveryOrchestrationGenerator().generate(seed=7, difficulty="standard")
+    gt = task["ground_truth"]
+    model = FakePolicyOrchestrationModel(policies.baseline_policy, gt["horizon"])
+
+    result = run("line_down_recovery_orchestration", seed=7, model_name="anthropic", model=model)
+
+    session = SimulationSession(gt["initial_state"], gt["horizon"], gt["max_turns"])
+    for action in result["parsed_answer"]:
+        session.submit_action(action)
+    assert result["score"] == SimulatedScorer().score_state(task, session.state)

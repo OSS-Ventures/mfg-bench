@@ -4,27 +4,103 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 2 (Family C — simulated decision & orchestration) — in progress.
-- **Reconciled:** `2.3` (PR #40) had already merged to `main` (CI green on the merge commit)
-  but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
-- **In flight:** `2.4 — L4 single-decision mode + simulated scorer` — PR #42 open, all 1271
-  tests green locally and via schema validation. Update (2026-08-07): the `github-actions`
-  CI workflow did eventually fire once for this PR — run #45 (`ci.yml`), completed **success**
-  at 2026-08-06T22:00:39Z — but only for the PR's *first* commit (`e25cfd6`), not for either of
-  the two docs-only follow-up commits (`2468421`, `d02c76d`) pushed minutes earlier that same
-  evening; no workflow run exists for either of those shas even ~13 hours later. Since
-  `e25cfd6` is the commit containing 100% of this unit's actual code/tests (the two later
-  commits only touch `docs/state.md`), and GitHub's PR status API still reports `pending`
-  (`total_count: 0`) for the current head sha `d02c76d` rather than surfacing `e25cfd6`'s result,
-  pushing this doc update now as a fresh commit to give CI another chance to dispatch on the
-  real head — a real dispatch failure (not a red run) at this point looks like transient GitHub
-  Actions backend flakiness around 2026-08-06 21:30-22:00 rather than a persistent repo/org-level
-  problem, since the workflow itself is `active` and every other PR this week dispatched normally.
-- **Next unit (after 2.4 merges):** `2.5 — L5 agentic tool interface` (Phase 2, Family C).
-- **Blockers:** PR #42's CI has not run on its current head commit (see above) — do not merge
-  until a real `github-actions` run completes green on `d02c76d` or whatever commit is head at
-  merge time.
+- **Reconciled:** `2.4` (PR #42) had already merged to `main` (merge commit confirms CI green
+  on the head commit, run #48) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- **In flight:** `2.5 — L5 agentic tool interface` — implemented, tested locally (2047 passed),
+  PR being opened this firing.
+- **Next unit (after 2.5 merges):** Phase 2 is then complete; Phase 3 unit `3.1 — 8D / APQP-PPAP
+  closed-form tasks` (Family B, source-grounded) is next.
+- **Blockers:** none known.
 
 ## Log
+
+### 2026-08-08 — Unit 2.5: L5 agentic tool interface
+- Reconciled stale state: `2.4` (PR #42) had already merged to `main` (the merge commit's own
+  message confirms CI green on the head commit, run #48) but the roadmap checkbox was left at
+  `[~]` — fixed to `[x]` now.
+- Added `simulator/tools.py`: `SimulationSession`, the turn-capped state machine behind L5
+  ("the agent interacts turn-by-turn through `simulator/tools.py` (query state, place actions),
+  capped at N turns" — SPEC.md Section 9). Exposes exactly two operations, `get_state` (read-only
+  snapshot) and `submit_action` (attempt one step of the real `simulator.engine.step`), each
+  spending one turn from a fixed `max_turns` budget regardless of whether it's a query or an
+  action — a model that only ever queries still eventually runs out of turns. An illegal or
+  malformed `submit_action` call is rejected (an error dict, turn still spent, state unchanged)
+  rather than raised — same generation≠grading stance unit 2.4 took for L4's plan replay, applied
+  here to a live session instead. `TOOL_DEFINITIONS` (Anthropic tool-schema format) and `dispatch()`
+  (routes a tool call by name to the session) round out the module.
+- Extended `scorers/simulated.py` with `SimulatedScorer.score_state(task, final_state)`: the L5
+  counterpart to unit 2.4's `score()` (which replays a submitted plan). L5 has no plan to replay
+  — the session already drove every accepted action through the real engine — so this scores
+  whatever final state the session actually reached (by horizon or by running out of turns)
+  directly against the same `kpi_baseline`/`kpi_reference` bounds. Refactored the shared
+  clip/tie-handling normalization math into `_normalize()`, used by both `score()` and
+  `score_state()` so the two paths can never drift apart on how a KPI delta becomes a `[0,1]`
+  score.
+- Added two new generators to `generators/simulated_decision.py`: `LineDownRecoveryOrchestrationGenerator`
+  and `DemandSpikeRebalanceOrchestrationGenerator` (`reasoning_tier: "L5"`, same scenarios/domains
+  as unit 2.4's L4 generators, via the same `simulator.scenarios.registry`). Each task's prompt
+  describes the initial situation plus the tool-based interaction (call `get_state`/`submit_action`
+  up to `max_turns` times, `max_turns = 3 x horizon + 5` — enough for one `submit_action` per
+  step plus slack for queries and mistakes) instead of asking for a one-shot plan. Task ids use an
+  `orchestration.` prefix (vs. L4's `simulated.` prefix) so an L4 and L5 task built from the same
+  scenario and seed never collide.
+- Extended the `Model` interface (`harness/adapters/base.py`, docstring only, no signature
+  change since `**kwargs` already covers it) to document two new optional `complete()` kwargs:
+  `tool_executor` (callback for tool calls) and `max_turns` (round-trip cap). An adapter that
+  doesn't implement the agentic loop must pop both and fall back to one ordinary completion
+  rather than raise — a model that can't use tools is a legitimate (if poor) L5 result, not a
+  harness bug. Implemented the real loop in `harness/adapters/anthropic.py`
+  (`AnthropicModel._run_agentic_loop`): sends the opening prompt with `tools`, and on every
+  `tool_use` block in the response, calls `tool_executor(name, input)` and feeds the JSON-encoded
+  result back as a `tool_result` block in the next user turn, until a response contains no
+  `tool_use` block or `max_turns` round trips are spent (a defensive ceiling on top of the
+  session's own turn budget). Logs the full exchange as `trajectory`. `harness/adapters/openai.py`
+  and `harness/adapters/google.py` each gained a one-line fix (`kwargs.pop("tool_executor", None)`
+  / `kwargs.pop("max_turns", None)`) so passing these kwargs uniformly from the harness never
+  crashes an adapter that doesn't support them yet — confirmed by hand that both now fail only on
+  the missing API key, same as before this unit, rather than a `TypeError` on the new kwargs.
+- Wired both orchestration generators into `harness/run.py`'s `GENERATORS` registry and added
+  `run_orchestration()`: for a `reasoning_tier == "L5"` task, builds a `SimulationSession` from
+  the task's ground truth, hands the model a `tool_executor` closure bound to that session, calls
+  `model.complete(task["prompt"], tools=TOOL_DEFINITIONS, tool_executor=..., max_turns=...)`, and
+  scores via `scorer.score_state(task, session.state)` once the model stops (or the loop/turn cap
+  ends it). `parsed_answer` is `session.history` — the ordered list of actions the session
+  actually applied — and `parse_failure` is always `False` for L5 (there is no `<answer>` tag to
+  fail to parse; an unproductive session is a scoring outcome, exactly like unit 2.4's illegal
+  plans). `python -m harness.run --generator line_down_recovery_orchestration --seed 1 --model
+  anthropic` (and the `demand_spike_rebalance_orchestration` counterpart) reach the real Anthropic
+  API call and fail only on the missing `ANTHROPIC_API_KEY` (not available in this sandbox).
+- Tests: `tests/test_simulator_tools.py` (tool-definition shape, `get_state`/`submit_action` turn
+  accounting and budget exhaustion, legal actions cross-checked directly against `engine.step`,
+  illegal/malformed actions rejected without raising and without advancing state, horizon-reached
+  vs. turn-cap-reached `done` semantics, a determinism check, and `dispatch()` routing including
+  an unknown-tool-name rejection), extensions to `tests/test_simulated_scorer.py` (`score_state`
+  hand-verified cases mirroring `score()`'s existing fixtures, plus a 60-seed x 2-difficulty x
+  2-scenario sweep that drives each scenario's real baseline/reference policy through a live
+  `SimulationSession` — unit 2.5's actual harness path — and confirms `score_state` reproduces the
+  same 0.0/1.0 bounds unit 2.4's plan-replay sweep already established), `tests/test_simulated_orchestration_generators.py`
+  (determinism, distinct-seeds, schema validation across a 60-seed x 2-difficulty x 2-generator
+  sweep, correct id/family/domain/tier/answer_format/scorer fields and non-colliding ids,
+  `kpi_reference <= kpi_baseline`, `max_turns >= horizon` always, context mirrors ground truth,
+  and the prompt names both tools and the turn cap), `tests/test_anthropic_adapter.py` (the new
+  agentic-loop control flow against a stubbed client: stops on a tool-free response, executes a
+  tool call and feeds the JSON-encoded result back correctly, handles multiple tool calls in one
+  turn, respects `max_turns` even against a model that never stops, and confirms `tools` alone
+  without a `tool_executor` still falls back to one ordinary completion), and extensions to
+  `tests/test_harness_run.py` (end-to-end: a `FakePolicyOrchestrationModel` that drives a known
+  policy through `tool_executor` exactly like a real tool-calling model would scores 1.0 via the
+  real harness path for both scenarios, a model that never calls any tool scores 0.0 without a
+  parse failure, and the harness's score agrees with calling `score_state` directly on a
+  reconstructed session). Full suite: **2047 passed** (was 1271 before this unit); swept 240
+  freshly-generated orchestration tasks (60 seeds x 2 difficulties x 2 generators) against
+  `schemas/task.schema.json` — all valid.
+- Out of scope for this unit (mirrors unit 2.4's own scope boundaries): the two new L5 generators
+  are not yet added to `taxonomy/taxonomy.yaml`'s targets or `data/public/`; OpenAI/Google
+  adapters gained defensive kwarg-popping only, not a native tool-calling implementation of their
+  own (documented in `harness/adapters/base.py`'s docstring as a legitimate, non-crashing
+  degradation, not a bug); this completes Phase 2's roadmap text ("the L5 agentic tool
+  interface") but does not add further simulator scenarios (supplier delay, quality hold cascade,
+  changeover optimization), which SPEC.md Section 9 lists as later additions, not part of 2.5.
 
 ### 2026-08-06 — Unit 2.4: L4 single-decision mode + simulated scorer
 - Reconciled stale state: `2.3` (PR #40) had already merged to `main` (verified the merge
