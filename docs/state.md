@@ -3,16 +3,89 @@
 The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
-- **Phase:** 2 (Family C — simulated decision & orchestration) — in progress.
-- **Reconciled:** `2.4` (PR #42) had already merged to `main` (merge commit confirms CI green
-  on the head commit, run #48) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
-- **In flight:** `2.5 — L5 agentic tool interface` — implemented, tested locally (2047 passed),
-  PR being opened this firing.
-- **Next unit (after 2.5 merges):** Phase 2 is then complete; Phase 3 unit `3.1 — 8D / APQP-PPAP
-  closed-form tasks` (Family B, source-grounded) is next.
+- **Phase:** 3 (Family B — source-grounded closed-form tasks) — in progress.
+- **Reconciled:** `2.5` (PR #44) had already merged to `main` (merge commit `3442934`, CI run
+  green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now. **This completes
+  Phase 2.**
+- **In flight:** `3.1 — 8D / APQP-PPAP closed-form tasks` — implemented, tested locally (2098
+  passed), PR being opened this firing.
+- **Next unit (after 3.1 merges):** `3.2 — 7/8 wastes, SMED / 5S / kanban sizing closed-form
+  tasks` (Family B, source-grounded).
 - **Blockers:** none known.
 
 ## Log
+
+### 2026-08-09 — Unit 3.1: 8D / APQP-PPAP closed-form tasks
+- Reconciled stale state: `2.5` (PR #44) had already merged to `main` (the merge commit
+  `3442934` confirms CI green on the head commit) but the roadmap checkbox was left at `[~]` —
+  fixed to `[x]` now. **This completes Phase 2** (all 5 units, 2.1–2.5).
+- Added `generators/eight_d.py` (`EightDGenerator`): a Family B (source-grounded) classification
+  generator over the canonical 8D corrective-action structure (D0-D8, cited to ASQ's free "What
+  is 8D?" page). `DISCIPLINES` is the fixed, cited D0-D8 structure; `ACTIVITIES` is a hand-written
+  bank of original paraphrases (2 "standard" + 2 "hard" per discipline, 36 total) of a concrete
+  activity a team performs during that discipline — never a quotation from any paywalled AIAG
+  text, per SPEC.md Section 4's licensing rule. `generate()` picks a discipline and one of its
+  activities by seed, and asks the model to classify which of the 9 disciplines (listed in full
+  in the prompt) the described activity belongs to. Ground truth is the fixed discipline label
+  the activity bank was written under — a lookup, not a judgment call. `answer_format`/`scorer`:
+  `classification`, reusing unit 1.10's already-merged `scorers/classification.py` unchanged.
+- Added `generators/apqp_ppap.py` with two generators sharing the module (both cited to free
+  sources, no paywalled AIAG manual text reproduced): `ApqpPhaseGenerator` mirrors `EightDGenerator`'s
+  design over the canonical 5 APQP phases (cited to 6Sigma.us's free APQP guide) — 2 standard + 1
+  hard original-paraphrase activity per phase (15 total), classification-scored.
+  `PpapElementsGenerator` covers the canonical 18-element PPAP structure (cited to Quality-One
+  International's free PPAP page): each of the 18 elements has an original one-line paraphrase of
+  what a package including it would contain; `generate()` samples 3 (`standard`) or 5 (`hard`) of
+  the 18 by seed, narrates a supplier's PPAP package containing exactly those items' contents (the
+  full 18-name list is also given in the prompt as the closed set to classify against), and asks
+  which canonical elements the package's contents satisfy. Ground truth is the sampled element
+  names; `answer_format`/`scorer`: `checklist`, reusing unit 1.10's already-merged
+  `scorers/checklist.py` unchanged. (Per that scorer's own documented recall-only semantics —
+  extra, non-required items in the model's answer are not penalized — a model that names every
+  one of the 18 elements regardless of the narrative would still score 1.0; this is pre-existing,
+  already-merged scorer behavior from unit 1.10, not something this unit changes.)
+- **Harness wiring (the acceptance criterion "every task carries `source`/`source_url`" and
+  "graded by exact/checklist match" both required this, since no `classification`/`checklist`
+  answer-format path existed in the harness before this unit — only `numeric` and `simulated`
+  did):** added `build_classification_prompt`/`parse_classification_answer` and
+  `build_checklist_prompt`/`parse_checklist_answer` to `harness/run.py`, and two new branches in
+  `run()`. Classification mirrors the numeric path's single-vs-multi-part distinction via a new
+  `is_multi_label_classification(task)` helper (true when `ground_truth["value"]` is a list) —
+  none of this unit's own tasks are multi-label, but `scorers/classification.py` already supports
+  it (for a future Family B task, e.g. unit 3.2's "which of the 7 wastes apply"), so the harness
+  path supports it now too rather than needing a second retrofit later. A missing tag, an empty
+  tag, or (multi-label) a tag with no items, is a parse failure for classification — there is no
+  legitimate "no answer". Checklist parsing treats an explicitly empty tag differently: a
+  legitimate "none of these apply" answer (parsed as `[]`, `parse_failure=False`), since a
+  checklist ground truth can legitimately have nothing present — only a *missing* tag is a parse
+  failure. Registered both new scorers (`classification`, `checklist`) and all three new
+  generators (`eight_d`, `apqp_phase`, `ppap_elements`) in `harness/run.py`'s `SCORERS`/`GENERATORS`.
+- Tests: `tests/test_eight_d.py` (the activity-bank's own internal consistency — every discipline
+  has both pools populated, no activity text is claimed by two disciplines — plus generator
+  determinism, distinct-seeds, schema validation across a 60-seed x 2-difficulty sweep, the
+  returned ground-truth discipline always matches the activity actually shown in `context` cross-
+  checked against the bank directly, the prompt lists all 9 discipline codes, and fixed-field
+  checks including `source`/`source_url`), `tests/test_apqp_ppap.py` (the same bank-consistency
+  and generator-behavior checks for both `ApqpPhaseGenerator` and `PpapElementsGenerator`, plus
+  PPAP-specific checks: the element table has exactly 18 entries, standard/hard difficulty samples
+  exactly 3/5 elements with no duplicates and always a subset of the canonical 18, and the prompt
+  mentions every included element's narrative plus all 18 option names), extensions to
+  `tests/test_run_parsing.py` (unit tests for all 4 new prompt/parse functions: single- and multi-
+  label classification, missing/empty-tag failures, checklist's empty-tag-is-legitimate-empty-list
+  distinction), and extensions to `tests/test_harness_run.py` (end-to-end: correct/wrong/missing-
+  tag/empty-tag cases for `eight_d` and `apqp_phase` through the real harness, and full-credit/
+  partial-credit/explicitly-empty-answer cases for `ppap_elements`). Full suite: **2098 passed**
+  (was 2047 before this unit); swept 500 seeds x 2 difficulties x all 3 new generators (3000
+  generated tasks) against `schemas/task.schema.json` — all valid. Confirmed the CLI path
+  (`python -m harness.run --generator eight_d --seed 1 --model anthropic`, and the `apqp_phase` /
+  `ppap_elements` counterparts) reaches the real Anthropic API call and fails only on the missing
+  `ANTHROPIC_API_KEY` (not available in this sandbox), confirming correct end-to-end wiring short
+  of live credentials.
+- Out of scope for this unit (mirrors how unit 1.11 deferred Family B/C taxonomy cells until
+  their generators existed, and how units 2.4/2.5 deferred their own new generators from the same
+  taxonomy/public-set inclusion): these three new generators are not yet added to
+  `taxonomy/taxonomy.yaml`'s targets or `data/public/`; units 3.2 (7/8 wastes, SMED/5S/kanban
+  sizing) and 3.3 (FMEA S/O/D scale reasoning) are not built.
 
 ### 2026-08-08 — Unit 2.5: L5 agentic tool interface
 - Reconciled stale state: `2.4` (PR #42) had already merged to `main` (the merge commit's own

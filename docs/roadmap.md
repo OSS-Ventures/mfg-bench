@@ -63,11 +63,11 @@ _Build one generator+scorer unit at a time; test each scorer before moving on._
 - [x] **2.3 — Scenario: demand spike / rebalance** + baseline & reference policies. KPI:
   service level + overtime cost.
 - [x] **2.4 — L4 single-decision mode + simulated scorer.** KPI-delta normalization to [0,1].
-- [~] **2.5 — L5 agentic tool interface** (`simulator/tools.py`), capped turns, trajectory
+- [x] **2.5 — L5 agentic tool interface** (`simulator/tools.py`), capped turns, trajectory
   logging. **Acceptance:** models complete L4 and L5 and receive normalized scores.
 
 ## Phase 3 — Family B (Source-grounded)
-- [ ] **3.1 — 8D / APQP-PPAP closed-form tasks** + answer keys + free public-source citations.
+- [~] **3.1 — 8D / APQP-PPAP closed-form tasks** + answer keys + free public-source citations.
 - [ ] **3.2 — 7/8 wastes, SMED / 5S / kanban sizing** closed-form tasks + citations.
 - [ ] **3.3 — FMEA S/O/D scale reasoning** closed-form tasks + citations.
   **Acceptance (all 3):** exact/checklist grading only; every task carries `source` +
