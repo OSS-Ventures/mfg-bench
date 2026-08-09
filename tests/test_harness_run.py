@@ -433,3 +433,105 @@ def test_run_orchestration_score_matches_calling_score_state_directly():
     for action in result["parsed_answer"]:
         session.submit_action(action)
     assert result["score"] == SimulatedScorer().score_state(task, session.state)
+
+
+# --- Family B: 8D / APQP / PPAP closed-form tasks (unit 3.1) -----------------------------
+
+# seed=1, standard eight_d task's ground truth discipline is "D2" (see tests/test_eight_d.py).
+
+
+def test_run_scores_eight_d_task_end_to_end():
+    result = run("eight_d", seed=1, model_name="anthropic", model=FakeModel(answer="D2"))
+    validate_result(result)
+    assert result["task_id"] == "source.eight_d.000001"
+    assert result["parsed_answer"] == "D2"
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_zero_on_wrong_eight_d_answer():
+    result = run("eight_d", seed=1, model_name="anthropic", model=FakeModel(answer="D7"))
+    validate_result(result)
+    assert result["score"] == 0.0
+
+
+def test_run_flags_parse_failure_for_eight_d_when_answer_tag_missing():
+    class NoTagModel(Model):
+        name = "no-tag-model"
+
+        def complete(self, prompt, tools=None, **kwargs):
+            return ModelResponse(text="D2", latency_ms=1)
+
+    result = run("eight_d", seed=1, model_name="anthropic", model=NoTagModel())
+    validate_result(result)
+    assert result["parse_failure"] is True
+    assert result["parsed_answer"] is None
+    assert result["score"] == 0.0
+
+
+def test_run_flags_parse_failure_for_eight_d_when_answer_tag_is_empty():
+    result = run("eight_d", seed=1, model_name="anthropic", model=FakeModel(answer=""))
+    validate_result(result)
+    assert result["parse_failure"] is True
+    assert result["parsed_answer"] is None
+    assert result["score"] == 0.0
+
+
+# seed=1, standard apqp_phase task's ground truth phase is "Phase 2" (see tests/test_apqp_ppap.py).
+
+
+def test_run_scores_apqp_phase_task_end_to_end():
+    result = run("apqp_phase", seed=1, model_name="anthropic", model=FakeModel(answer="Phase 2"))
+    validate_result(result)
+    assert result["task_id"] == "source.apqp_phase.000001"
+    assert result["parsed_answer"] == "Phase 2"
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_zero_on_wrong_apqp_phase_answer():
+    result = run("apqp_phase", seed=1, model_name="anthropic", model=FakeModel(answer="Phase 5"))
+    validate_result(result)
+    assert result["score"] == 0.0
+
+
+# seed=1, standard ppap_elements task's required items are ["Control Plan",
+# "Customer-Specific Requirements Records", "Engineering Change Documents"]
+# (see tests/test_apqp_ppap.py).
+
+
+def test_run_scores_ppap_elements_task_end_to_end():
+    result = run(
+        "ppap_elements",
+        seed=1,
+        model_name="anthropic",
+        model=FakeModel(
+            answer="Control Plan, Customer-Specific Requirements Records, Engineering Change Documents"
+        ),
+    )
+    validate_result(result)
+    assert result["task_id"] == "source.ppap_elements.000001"
+    assert result["parse_failure"] is False
+    assert sorted(result["parsed_answer"]) == [
+        "Control Plan",
+        "Customer-Specific Requirements Records",
+        "Engineering Change Documents",
+    ]
+    assert result["score"] == 1.0
+
+
+def test_run_scores_partial_ppap_elements_answer_as_fraction_correct():
+    # Only 1 of the 3 required elements named -> score 1/3.
+    result = run(
+        "ppap_elements", seed=1, model_name="anthropic", model=FakeModel(answer="Control Plan")
+    )
+    validate_result(result)
+    assert result["score"] == pytest.approx(1 / 3)
+
+
+def test_run_scores_zero_for_ppap_elements_when_answer_tag_is_explicitly_empty():
+    result = run("ppap_elements", seed=1, model_name="anthropic", model=FakeModel(answer=""))
+    validate_result(result)
+    assert result["parse_failure"] is False
+    assert result["parsed_answer"] == []
+    assert result["score"] == 0.0

@@ -1,9 +1,14 @@
 """Unit tests for harness/run.py's answer parsing: single-part, multi-part, and parse failures.
 """
 from harness.run import (
+    build_checklist_prompt,
+    build_classification_prompt,
     build_prompt,
     build_simulated_prompt,
+    is_multi_label_classification,
     num_parts_of,
+    parse_checklist_answer,
+    parse_classification_answer,
     parse_numeric_answer,
     parse_simulated_answer,
 )
@@ -111,3 +116,96 @@ def test_build_simulated_prompt_instructs_json_plan_of_the_right_horizon():
     prompt = build_simulated_prompt(task, "answer")
     assert "exactly 3 objects" in prompt
     assert "<answer></answer>" in prompt
+
+
+# --- classification prompt/parse ---
+
+
+def test_is_multi_label_classification_single_label_task():
+    assert is_multi_label_classification({"ground_truth": {"value": "D4"}}) is False
+
+
+def test_is_multi_label_classification_multi_label_task():
+    assert is_multi_label_classification({"ground_truth": {"value": ["a", "b"]}}) is True
+
+
+def test_build_classification_prompt_single_label_instructs_one_label():
+    task = {"prompt": "Which discipline?", "ground_truth": {"value": "D4"}}
+    prompt = build_classification_prompt(task, "answer")
+    assert "<answer></answer>" in prompt
+    assert "comma-separated" not in prompt
+
+
+def test_build_classification_prompt_multi_label_instructs_comma_separated_labels():
+    task = {"prompt": "Which wastes?", "ground_truth": {"value": ["a", "b"]}}
+    prompt = build_classification_prompt(task, "answer")
+    assert "comma-separated" in prompt
+
+
+def test_parse_classification_single_label_answer():
+    parsed, parse_failure = parse_classification_answer("<answer>D4</answer>", "answer", multi_label=False)
+    assert parsed == "D4"
+    assert parse_failure is False
+
+
+def test_parse_classification_single_label_strips_whitespace():
+    parsed, parse_failure = parse_classification_answer(
+        "<answer>  D4 \n</answer>", "answer", multi_label=False
+    )
+    assert parsed == "D4"
+    assert parse_failure is False
+
+
+def test_parse_classification_multi_label_answer():
+    parsed, parse_failure = parse_classification_answer(
+        "<answer>waste_a, waste_b</answer>", "answer", multi_label=True
+    )
+    assert parsed == ["waste_a", "waste_b"]
+    assert parse_failure is False
+
+
+def test_parse_classification_missing_tag_is_failure():
+    parsed, parse_failure = parse_classification_answer("D4", "answer", multi_label=False)
+    assert parsed is None
+    assert parse_failure is True
+
+
+def test_parse_classification_empty_tag_is_failure():
+    parsed, parse_failure = parse_classification_answer("<answer></answer>", "answer", multi_label=False)
+    assert parsed is None
+    assert parse_failure is True
+
+
+def test_parse_classification_multi_label_empty_tag_is_failure():
+    parsed, parse_failure = parse_classification_answer("<answer></answer>", "answer", multi_label=True)
+    assert parsed is None
+    assert parse_failure is True
+
+
+# --- checklist prompt/parse ---
+
+
+def test_build_checklist_prompt_mentions_leaving_tag_empty():
+    task = {"prompt": "Which elements apply?"}
+    prompt = build_checklist_prompt(task, "answer")
+    assert "leave the tag empty" in prompt
+
+
+def test_parse_checklist_answer_comma_separated_items():
+    parsed, parse_failure = parse_checklist_answer(
+        "<answer>Design FMEA, Control Plan</answer>", "answer"
+    )
+    assert parsed == ["Design FMEA", "Control Plan"]
+    assert parse_failure is False
+
+
+def test_parse_checklist_answer_empty_tag_is_a_legitimate_empty_list():
+    parsed, parse_failure = parse_checklist_answer("<answer></answer>", "answer")
+    assert parsed == []
+    assert parse_failure is False
+
+
+def test_parse_checklist_answer_missing_tag_is_failure():
+    parsed, parse_failure = parse_checklist_answer("no tags here", "answer")
+    assert parsed is None
+    assert parse_failure is True
