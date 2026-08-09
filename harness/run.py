@@ -15,6 +15,8 @@ from typing import Any, Optional
 
 import yaml
 
+from generators.apqp_ppap import ApqpPhaseGenerator, PpapElementsGenerator
+from generators.eight_d import EightDGenerator
 from generators.fmea import FMEAGenerator
 from generators.inventory_policy import InventoryPolicyGenerator
 from generators.mrp import MRPGenerator
@@ -35,6 +37,8 @@ from harness.adapters.base import Model
 from harness.adapters.google import GoogleModel
 from harness.adapters.openai import OpenAIModel
 from harness.validate import validate_result, validate_task
+from scorers.checklist import ChecklistScorer
+from scorers.classification import ClassificationScorer
 from scorers.numeric import NumericScorer
 from scorers.simulated import SimulatedScorer
 from simulator.tools import TOOL_DEFINITIONS, SimulationSession, dispatch
@@ -55,8 +59,16 @@ GENERATORS = {
     "demand_spike_rebalance_decision": DemandSpikeRebalanceDecisionGenerator,
     "line_down_recovery_orchestration": LineDownRecoveryOrchestrationGenerator,
     "demand_spike_rebalance_orchestration": DemandSpikeRebalanceOrchestrationGenerator,
+    "eight_d": EightDGenerator,
+    "apqp_phase": ApqpPhaseGenerator,
+    "ppap_elements": PpapElementsGenerator,
 }
-SCORERS = {"numeric": NumericScorer, "simulated": SimulatedScorer}
+SCORERS = {
+    "numeric": NumericScorer,
+    "simulated": SimulatedScorer,
+    "classification": ClassificationScorer,
+    "checklist": ChecklistScorer,
+}
 ADAPTERS = {"anthropic": AnthropicModel, "openai": OpenAIModel, "google": GoogleModel}
 
 
@@ -144,6 +156,69 @@ def parse_simulated_answer(raw_response: str, answer_tag: str) -> tuple[Any, boo
     return parsed, False
 
 
+def is_multi_label_classification(task: dict[str, Any]) -> bool:
+    """Whether a classification task's ground truth is multi-label (a list of labels) rather
+    than single-label (one label). Determines both how the prompt asks for the answer and how
+    the raw response is parsed -- mirroring how `num_parts_of` drives the numeric path."""
+    return isinstance(task["ground_truth"]["value"], (list, tuple))
+
+
+def build_classification_prompt(task: dict[str, Any], answer_tag: str) -> str:
+    if is_multi_label_classification(task):
+        instruction = (
+            "Respond with only the matching label(s), comma-separated, inside "
+            f"<{answer_tag}></{answer_tag}> tags."
+        )
+    else:
+        instruction = (
+            f"Respond with only your final label inside <{answer_tag}></{answer_tag}> tags."
+        )
+    return f"{task['prompt']}\n\n{instruction}"
+
+
+def parse_classification_answer(
+    raw_response: str, answer_tag: str, multi_label: bool
+) -> tuple[Any, bool]:
+    """Parse the model's classification answer out of the `<answer_tag>` block: a bare label for
+    a single-label task, or a comma-separated list of labels for a multi-label task. A missing
+    tag, an empty tag, or (for a multi-label task) a tag with no items in it, is a parse failure
+    -- there is no legitimate "no answer" for a classification task (contrast with the checklist
+    parser below, where an empty answer can be a legitimate "none of these apply")."""
+    match = re.search(rf"<{answer_tag}>(.*?)</{answer_tag}>", raw_response, re.DOTALL)
+    if not match:
+        return None, True
+    raw = match.group(1).strip()
+    if not raw:
+        return None, True
+    if multi_label:
+        items = [t.strip() for t in raw.split(",") if t.strip()]
+        return (items, False) if items else (None, True)
+    return raw, False
+
+
+def build_checklist_prompt(task: dict[str, Any], answer_tag: str) -> str:
+    instruction = (
+        "Respond with only the matching item name(s), comma-separated, inside "
+        f"<{answer_tag}></{answer_tag}> tags (leave the tag empty if none apply)."
+    )
+    return f"{task['prompt']}\n\n{instruction}"
+
+
+def parse_checklist_answer(raw_response: str, answer_tag: str) -> tuple[Any, bool]:
+    """Parse the model's checklist answer out of the `<answer_tag>` block: a comma-separated
+    list of item names. Unlike classification, an explicitly empty tag is a legitimate "none of
+    these apply" answer -- parsed as an empty list, not a parse failure. Only a missing tag is a
+    parse failure."""
+    match = re.search(rf"<{answer_tag}>(.*?)</{answer_tag}>", raw_response, re.DOTALL)
+    if not match:
+        return None, True
+    raw = match.group(1).strip()
+    if not raw:
+        return [], False
+    items = [t.strip() for t in raw.split(",") if t.strip()]
+    return items, False
+
+
 def run_orchestration(
     task: dict[str, Any], model: Model, scorer: SimulatedScorer
 ) -> tuple[Any, list[dict], float]:
@@ -202,6 +277,18 @@ def run(
         prompt = build_simulated_prompt(task, config["answer_tag"])
         response = model.complete(prompt)
         parsed_answer, parse_failure = parse_simulated_answer(response.text, config["answer_tag"])
+        score = 0.0 if parse_failure else scorer.score(task, parsed_answer)
+    elif task["answer_format"] == "classification":
+        prompt = build_classification_prompt(task, config["answer_tag"])
+        response = model.complete(prompt)
+        parsed_answer, parse_failure = parse_classification_answer(
+            response.text, config["answer_tag"], is_multi_label_classification(task)
+        )
+        score = 0.0 if parse_failure else scorer.score(task, parsed_answer)
+    elif task["answer_format"] == "checklist":
+        prompt = build_checklist_prompt(task, config["answer_tag"])
+        response = model.complete(prompt)
+        parsed_answer, parse_failure = parse_checklist_answer(response.text, config["answer_tag"])
         score = 0.0 if parse_failure else scorer.score(task, parsed_answer)
     else:
         num_parts = num_parts_of(task)
