@@ -67,8 +67,8 @@ _Build one generator+scorer unit at a time; test each scorer before moving on._
   logging. **Acceptance:** models complete L4 and L5 and receive normalized scores.
 
 ## Phase 3 — Family B (Source-grounded)
-- [~] **3.1 — 8D / APQP-PPAP closed-form tasks** + answer keys + free public-source citations.
-- [ ] **3.2 — 7/8 wastes, SMED / 5S / kanban sizing** closed-form tasks + citations.
+- [x] **3.1 — 8D / APQP-PPAP closed-form tasks** + answer keys + free public-source citations.
+- [~] **3.2 — 7/8 wastes, SMED / 5S / kanban sizing** closed-form tasks + citations.
 - [ ] **3.3 — FMEA S/O/D scale reasoning** closed-form tasks + citations.
   **Acceptance (all 3):** exact/checklist grading only; every task carries `source` +
   `source_url`; no paywalled standard text reproduced anywhere.

@@ -535,3 +535,94 @@ def test_run_scores_zero_for_ppap_elements_when_answer_tag_is_explicitly_empty()
     assert result["parse_failure"] is False
     assert result["parsed_answer"] == []
     assert result["score"] == 0.0
+
+
+# --- Family B: 7/8 wastes, SMED, 5S, kanban sizing closed-form tasks (unit 3.2) -----------
+
+# seed=1, standard task ground truths (see tests/test_lean_waste.py, tests/test_five_s.py,
+# tests/test_smed.py, tests/test_kanban_sizing.py): lean_waste -> "Motion", five_s ->
+# "Set In Order", smed -> "External", kanban_sizing -> "D".
+
+
+def test_run_scores_lean_waste_task_end_to_end():
+    result = run("lean_waste", seed=1, model_name="anthropic", model=FakeModel(answer="Motion"))
+    validate_result(result)
+    assert result["task_id"] == "source.lean_waste.000001"
+    assert result["parsed_answer"] == "Motion"
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_zero_on_wrong_lean_waste_answer():
+    result = run("lean_waste", seed=1, model_name="anthropic", model=FakeModel(answer="Waiting"))
+    validate_result(result)
+    assert result["score"] == 0.0
+
+
+def test_run_flags_parse_failure_for_lean_waste_when_answer_tag_missing():
+    class NoTagModel(Model):
+        name = "no-tag-model"
+
+        def complete(self, prompt, tools=None, **kwargs):
+            return ModelResponse(text="Motion", latency_ms=1)
+
+    result = run("lean_waste", seed=1, model_name="anthropic", model=NoTagModel())
+    validate_result(result)
+    assert result["parse_failure"] is True
+    assert result["parsed_answer"] is None
+    assert result["score"] == 0.0
+
+
+def test_run_scores_five_s_task_end_to_end():
+    result = run(
+        "five_s", seed=1, model_name="anthropic", model=FakeModel(answer="Set In Order")
+    )
+    validate_result(result)
+    assert result["task_id"] == "source.five_s.000001"
+    assert result["parsed_answer"] == "Set In Order"
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_zero_on_wrong_five_s_answer():
+    result = run("five_s", seed=1, model_name="anthropic", model=FakeModel(answer="Sort"))
+    validate_result(result)
+    assert result["score"] == 0.0
+
+
+def test_run_scores_smed_task_end_to_end():
+    result = run("smed", seed=1, model_name="anthropic", model=FakeModel(answer="External"))
+    validate_result(result)
+    assert result["task_id"] == "source.smed.000001"
+    assert result["parsed_answer"] == "External"
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_zero_on_wrong_smed_answer():
+    result = run("smed", seed=1, model_name="anthropic", model=FakeModel(answer="Internal"))
+    validate_result(result)
+    assert result["score"] == 0.0
+
+
+def test_run_scores_kanban_sizing_task_end_to_end():
+    result = run("kanban_sizing", seed=1, model_name="anthropic", model=FakeModel(answer="D"))
+    validate_result(result)
+    assert result["task_id"] == "source.kanban_sizing.000001"
+    assert result["parsed_answer"] == "D"
+    assert result["parse_failure"] is False
+    assert result["score"] == 1.0
+
+
+def test_run_scores_zero_on_wrong_kanban_sizing_answer():
+    result = run("kanban_sizing", seed=1, model_name="anthropic", model=FakeModel(answer="A"))
+    validate_result(result)
+    assert result["score"] == 0.0
+
+
+def test_run_flags_parse_failure_for_kanban_sizing_when_answer_tag_is_empty():
+    result = run("kanban_sizing", seed=1, model_name="anthropic", model=FakeModel(answer=""))
+    validate_result(result)
+    assert result["parse_failure"] is True
+    assert result["parsed_answer"] is None
+    assert result["score"] == 0.0
