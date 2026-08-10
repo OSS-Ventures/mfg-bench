@@ -17,12 +17,16 @@ import yaml
 
 from generators.apqp_ppap import ApqpPhaseGenerator, PpapElementsGenerator
 from generators.eight_d import EightDGenerator
+from generators.five_s import FiveSGenerator
 from generators.fmea import FMEAGenerator
 from generators.inventory_policy import InventoryPolicyGenerator
+from generators.kanban_sizing import KanbanSizingGenerator
+from generators.lean_waste import LeanWasteGenerator
 from generators.mrp import MRPGenerator
 from generators.oee import OEEGenerator
 from generators.quality_economics import QualityEconomicsGenerator
 from generators.scheduling import SchedulingGenerator
+from generators.smed import SmedSetupClassificationGenerator
 from generators.simulated_decision import (
     DemandSpikeRebalanceDecisionGenerator,
     DemandSpikeRebalanceOrchestrationGenerator,
@@ -62,6 +66,10 @@ GENERATORS = {
     "eight_d": EightDGenerator,
     "apqp_phase": ApqpPhaseGenerator,
     "ppap_elements": PpapElementsGenerator,
+    "lean_waste": LeanWasteGenerator,
+    "five_s": FiveSGenerator,
+    "smed": SmedSetupClassificationGenerator,
+    "kanban_sizing": KanbanSizingGenerator,
 }
 SCORERS = {
     "numeric": NumericScorer,
