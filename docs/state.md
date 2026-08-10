@@ -4,16 +4,70 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 3 (Family B — source-grounded closed-form tasks) — in progress.
-- **Reconciled:** `2.5` (PR #44) had already merged to `main` (merge commit `3442934`, CI run
-  green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now. **This completes
-  Phase 2.**
-- **In flight:** `3.1 — 8D / APQP-PPAP closed-form tasks` — implemented, tested locally (2098
-  passed), PR being opened this firing.
-- **Next unit (after 3.1 merges):** `3.2 — 7/8 wastes, SMED / 5S / kanban sizing closed-form
-  tasks` (Family B, source-grounded).
+- **Reconciled:** `3.1` (PR #46) had already merged to `main` (merge commit confirmed, CI run
+  green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- **In flight:** `3.2 — 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks` — implemented,
+  tested locally (2149 passed), PR being opened this firing.
+- **Next unit (after 3.2 merges):** `3.3 — FMEA S/O/D scale reasoning closed-form tasks`
+  (Family B, source-grounded), completing Phase 3.
 - **Blockers:** none known.
 
 ## Log
+
+### 2026-08-10 — Unit 3.2: 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks
+- Reconciled stale state: `3.1` (PR #46) had already merged to `main` (verified the merge
+  commit's CI run is green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
+- Added four new Family B (source-grounded) generators, mirroring unit 3.1's classification/
+  checklist pattern and reusing its already-merged scorers unchanged — no new harness plumbing
+  needed:
+  - **`generators/lean_waste.py`** (`LeanWasteGenerator`, domain `continuous_improvement`):
+    classification over the canonical 8-waste TIMWOODS taxonomy (Transportation, Inventory,
+    Motion, Waiting, Overproduction, Overprocessing, Defects, Skills). Cited to SixSigma.us's
+    free TIMWOODS guide. 8 wastes x (2 standard + 2 hard) = 32 original-paraphrase scenarios.
+  - **`generators/five_s.py`** (`FiveSGenerator`, domain `continuous_improvement`): classification
+    over the canonical 5 phases of 5S (Sort, Set In Order, Shine, Standardize, Sustain). Cited to
+    ASQ's free 5S tutorial. 5 phases x (2 standard + 2 hard) = 20 original-paraphrase activities.
+  - **`generators/smed.py`** (`SmedSetupClassificationGenerator`, domain
+    `methods_industrialization`): classification of a changeover step as SMED's canonical
+    "Internal" (machine must be stopped) vs "External" (can be done while running). Cited to
+    Lean Production's free SMED guide. 2 categories x (2 standard + 2 hard) = 8 original-
+    paraphrase steps.
+  - **`generators/kanban_sizing.py`** (`KanbanSizingGenerator`, domain `supply_chain_sop`): the
+    one generator in this unit whose ground truth is a genuine computation rather than a fixed
+    lookup — the canonical kanban-card-count formula (`ceil(daily demand x lead time x
+    (1 + safety factor) / container size)`), cited to DMAIC.com's free kanban-calculation guide.
+    Kept closed-form per SPEC.md's Family B rule ("multiple-choice / classification / checklist")
+    by presenting the correctly-computed count alongside 3 distractors built from common
+    calculation mistakes (omitting the safety factor, flooring instead of ceiling, off-by-one),
+    deduplicated against each other and the correct value, and asking the model to pick the
+    correct letter — reusing `scorers/classification.py` as the multiple-choice grading
+    mechanism, exactly as unit 3.1 did for 8D/APQP-phase classification.
+- Wired all 4 generators into `harness/run.py`'s `GENERATORS` registry (`--generator lean_waste`
+  / `five_s` / `smed` / `kanban_sizing` now work end-to-end); no new scorer or prompt/parse code
+  needed since all 4 use the already-merged `classification` answer-format path from unit 3.1.
+- Tests: `tests/test_lean_waste.py`, `tests/test_five_s.py`, `tests/test_smed.py` (lookup-table
+  internal consistency — every category has both pools populated, no scenario/activity/step text
+  claimed by two categories — plus generator determinism, distinct-seeds, schema validation
+  across a 60-seed x 2-difficulty sweep, ground-truth-matches-context cross-checks, and
+  fixed-field checks including `source`/`source_url`); `tests/test_kanban_sizing.py` (since this
+  generator computes rather than looks up its ground truth, the acceptance-relevant check is an
+  *independent recomputation* of the kanban formula using a separately-written expression —
+  percent-based rather than the generator's direct `1 + safety_factor` — cross-checked over 200
+  seeds x 2 difficulties, plus checks that all 4 options are distinct non-negative integers, the
+  ground-truth letter's option always equals the independently-verified correct count, and a
+  hand-verified seed=1 case); extensions to `tests/test_harness_run.py` (end-to-end correct/wrong
+  cases for all 4 new generators through the real harness, plus parse-failure cases for
+  `lean_waste` (missing tag) and `kanban_sizing` (empty tag)). Full suite: **2149 passed** (was
+  2098 before this unit); swept 500 seeds x 2 difficulties x all 4 new generators (4000 generated
+  tasks) against `schemas/task.schema.json` — all valid. Confirmed the CLI path
+  (`python -m harness.run --generator lean_waste --seed 1 --model anthropic`, and the `five_s` /
+  `smed` / `kanban_sizing` counterparts) reaches the real Anthropic API call and fails only on
+  the missing `ANTHROPIC_API_KEY` (not available in this sandbox), confirming correct end-to-end
+  wiring short of live credentials.
+- Out of scope for this unit (mirrors how unit 3.1 deferred its own generators from the taxonomy/
+  public-set, and unit 3.1's own remaining roadmap item): unit 3.3 (FMEA S/O/D scale reasoning)
+  is not built; these 4 new generators are not yet added to `taxonomy/taxonomy.yaml`'s targets or
+  `data/public/`.
 
 ### 2026-08-09 — Unit 3.1: 8D / APQP-PPAP closed-form tasks
 - Reconciled stale state: `2.5` (PR #44) had already merged to `main` (the merge commit
