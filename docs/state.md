@@ -7,12 +7,22 @@ The autonomous loop appends here every iteration. Newest entries on top.
 - **Reconciled:** `3.1` (PR #46) had already merged to `main` (merge commit confirmed, CI run
   green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
 - **In flight:** `3.2 — 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks` — implemented,
-  tested locally (2149 passed), PR being opened this firing.
+  tested locally (2149 passed), PR opened 2026-08-10; status as of this firing not re-checked
+  (budget guard tripped before the concurrency guard's PR check — see log entry below).
 - **Next unit (after 3.2 merges):** `3.3 — FMEA S/O/D scale reasoning closed-form tasks`
   (Family B, source-grounded), completing Phase 3.
-- **Blockers:** none known.
+- **Blockers:** loop `stop_date` (`.loop/budget.yaml`) is `2026-08-10`, which has now passed
+  (today 2026-08-11). The loop will not do build work on any further firing until Renan bumps
+  `stop_date` forward.
 
 ## Log
+
+### 2026-08-11 — Skipped: past stop_date
+- Budget guard tripped: `.loop/budget.yaml` sets `stop_date: "2026-08-10"`; today is
+  2026-08-11, which is after it. Per `.loop/build-loop.md` Step 1.1, exited without doing any
+  build work — no issue/PR opened, no unit selected, roadmap untouched. This note was pushed to
+  a `claude/loop-log-2026-08-11` branch (not `main`) via the GitHub MCP tools, per the guard's
+  documented options.
 
 ### 2026-08-10 — Unit 3.2: 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks
 - Reconciled stale state: `3.1` (PR #46) had already merged to `main` (verified the merge
