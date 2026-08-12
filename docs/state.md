@@ -4,15 +4,20 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 3 (Family B — source-grounded closed-form tasks) — in progress.
-- **Reconciled:** `3.1` (PR #46) had already merged to `main` (merge commit confirmed, CI run
+- **Reconciled:** `3.2` (PR #48) had already merged to `main` (merge commit confirmed, CI run
   green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
-- **In flight:** `3.2 — 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks` — implemented,
-  tested locally (2149 passed), PR being opened this firing.
-- **Next unit (after 3.2 merges):** `3.3 — FMEA S/O/D scale reasoning closed-form tasks`
-  (Family B, source-grounded), completing Phase 3.
-- **Blockers:** none known.
+- **Next unit:** `3.3 — FMEA S/O/D scale reasoning closed-form tasks` (Family B,
+  source-grounded), completing Phase 3.
+- **Blockers:** the build loop's `.loop/budget.yaml` `stop_date` (2026-08-10) has passed
+  (today 2026-08-12) — the budget guard halts all build work until Renan extends `stop_date`.
 
 ## Log
+
+### 2026-08-12 — Skipped: past stop_date
+- Budget guard (build-loop Step 1.1): `.loop/budget.yaml` sets `stop_date: "2026-08-10"`; today
+  is 2026-08-12, which is after `stop_date`. Per `.loop/build-loop.md`, exiting cleanly without
+  doing any build work — no issue or PR opened this firing. Renan: extend `stop_date` in
+  `.loop/budget.yaml` to resume the loop.
 
 ### 2026-08-10 — Unit 3.2: 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks
 - Reconciled stale state: `3.1` (PR #46) had already merged to `main` (verified the merge
