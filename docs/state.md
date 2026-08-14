@@ -6,13 +6,32 @@ The autonomous loop appends here every iteration. Newest entries on top.
 - **Phase:** 3 (Family B — source-grounded closed-form tasks) — in progress.
 - **Reconciled:** `3.1` (PR #46) had already merged to `main` (merge commit confirmed, CI run
   green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
-- **In flight:** `3.2 — 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks` — implemented,
-  tested locally (2149 passed), PR being opened this firing.
-- **Next unit (after 3.2 merges):** `3.3 — FMEA S/O/D scale reasoning closed-form tasks`
+- **Merged, not yet reconciled on `main`:** `3.2 — 7/8 wastes, SMED / 5S / kanban sizing
+  closed-form tasks` (PR #48) merged to `main` on 2026-08-10, but every firing since has hit the
+  budget guard before reaching the concurrency guard (Step 1.2), so the roadmap checkbox is still
+  `[~]` on `main` as of this note. The next firing that gets past the budget guard should flip it
+  to `[x]` per Step 1.2.
+- **Next unit (once the loop resumes):** `3.3 — FMEA S/O/D scale reasoning closed-form tasks`
   (Family B, source-grounded), completing Phase 3.
-- **Blockers:** none known.
+- **Blockers:** `.loop/budget.yaml`'s `stop_date` (`2026-08-10`) has passed (today: 2026-08-14).
+  The budget guard has now halted 4 consecutive firings (2026-08-11 through 2026-08-14) — see log
+  below. Renan needs to bump `stop_date` (and/or `runs_by_day`) in `.loop/budget.yaml` to resume
+  the loop.
 
 ## Log
+
+### 2026-08-14 — Loop firing skipped: budget guard (stop_date exceeded)
+- Skipped: `.loop/budget.yaml`'s `stop_date` is `2026-08-10`; today (2026-08-14) is after it. Per
+  `.loop/build-loop.md` Step 1's budget guard, exiting without doing any build work — no issue or
+  PR opened this firing.
+- For transparency: confirmed via the GitHub MCP tools that there is no open `claude/` PR right
+  now (so the concurrency guard would have passed had the budget guard not tripped first), and
+  that `main`'s CI is green at HEAD (`b2e5d4a`, PR #48 merge). Neither check changes the outcome —
+  the budget guard is checked first and halts the firing regardless.
+- This is the 4th consecutive skipped firing since the stop date passed (2026-08-11, 2026-08-12,
+  2026-08-13 also skipped, logged on their own `claude/loop-log-<date>` branches that were never
+  merged to `main` — hence `main`'s `docs/state.md` did not yet reflect them before this entry).
+  Renan needs to bump `stop_date` (and/or `runs_by_day`) in `.loop/budget.yaml` to resume the loop.
 
 ### 2026-08-10 — Unit 3.2: 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks
 - Reconciled stale state: `3.1` (PR #46) had already merged to `main` (verified the merge
