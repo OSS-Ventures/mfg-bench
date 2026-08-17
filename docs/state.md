@@ -4,15 +4,23 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 3 (Family B — source-grounded closed-form tasks) — in progress.
-- **Reconciled:** `3.1` (PR #46) had already merged to `main` (merge commit confirmed, CI run
-  green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
-- **In flight:** `3.2 — 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks` — implemented,
-  tested locally (2149 passed), PR being opened this firing.
-- **Next unit (after 3.2 merges):** `3.3 — FMEA S/O/D scale reasoning closed-form tasks`
-  (Family B, source-grounded), completing Phase 3.
-- **Blockers:** none known.
+- **Loop halted:** `.loop/budget.yaml`'s `stop_date` (2026-08-10) has passed (today is
+  2026-08-17). Per the budget guard, this firing exited before selecting a new unit. No new
+  build work, issue, or PR was started. **Renan needs to bump `stop_date` in
+  `.loop/budget.yaml` to resume the loop.**
+- **Note:** `3.2` (PR #48) merged to `main` (CI green on the merge commit `b2e5d4a`) since the
+  last log entry, but this firing did not touch the roadmap checkbox for it — that reconciliation
+  is build-adjacent work the budget guard also blocks; the next unarmed firing should fix it.
+- **Next unit (once resumed):** `3.3 — FMEA S/O/D scale reasoning closed-form tasks` (Family B,
+  source-grounded), completing Phase 3 — pending confirmation that `3.2`'s checkbox is `[x]`.
+- **Blockers:** budget guard (`stop_date` expired). No other known blockers.
 
 ## Log
+
+### 2026-08-17 — Skipped: stop_date passed (budget guard)
+- `.loop/budget.yaml` sets `stop_date: "2026-08-10"`; today's date is 2026-08-17, i.e. after the
+  stop date. Per `.loop/build-loop.md` Step 1 (budget guard), halted cleanly before Step 2 (unit
+  selection) — no issue, branch, or PR opened for new build work this firing.
 
 ### 2026-08-10 — Unit 3.2: 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks
 - Reconciled stale state: `3.1` (PR #46) had already merged to `main` (verified the merge
