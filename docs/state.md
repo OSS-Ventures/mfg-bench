@@ -4,15 +4,27 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 3 (Family B — source-grounded closed-form tasks) — in progress.
-- **Reconciled:** `3.1` (PR #46) had already merged to `main` (merge commit confirmed, CI run
-  green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
-- **In flight:** `3.2 — 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks` — implemented,
-  tested locally (2149 passed), PR being opened this firing.
-- **Next unit (after 3.2 merges):** `3.3 — FMEA S/O/D scale reasoning closed-form tasks`
-  (Family B, source-grounded), completing Phase 3.
-- **Blockers:** none known.
+- **Reconciled:** `3.2` (PR #48, merge commit `b2e5d4a`) has merged to `main` (CI green) but the
+  roadmap checkbox is still `[~]` — left as-is this firing since the budget guard stopped the
+  loop before it could do build work (see below); the next firing that actually builds should
+  flip it to `[x]`.
+- **Next unit:** `3.3 — FMEA S/O/D scale reasoning closed-form tasks` (Family B, source-grounded,
+  completes Phase 3) is first in `docs/roadmap.md`.
+- **Blockers:** `.loop/budget.yaml`'s `stop_date` (`2026-08-10`) has passed — the loop is halted
+  by its own budget guard as of this firing (2026-08-19). No build work will happen until Renan
+  bumps `stop_date` (and/or `enabled`) forward.
 
 ## Log
+
+### 2026-08-19 — skipped: budget/stop-date guard
+- Guard check (Step 1 of `.loop/build-loop.md`): `.loop/budget.yaml` has `stop_date: "2026-08-10"`;
+  today is 2026-08-19, which is after the stop date. Per the build-loop's budget guard, exited
+  without doing any build work — no new issue/PR opened this firing.
+- Verified the other guards for the record even though the budget guard alone is sufficient to
+  halt: no open `claude/*` PRs (`list_pull_requests` on `OSS-Ventures/mfg-bench` returned none),
+  and `main` is green (HEAD `b2e5d4a`, the merge of PR #48 / unit 3.2 — CI was green on merge).
+- No action needed from this firing beyond this log entry. Renan should extend or remove
+  `stop_date` in `.loop/budget.yaml` (and confirm `enabled: true`) to resume the loop.
 
 ### 2026-08-10 — Unit 3.2: 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks
 - Reconciled stale state: `3.1` (PR #46) had already merged to `main` (verified the merge
