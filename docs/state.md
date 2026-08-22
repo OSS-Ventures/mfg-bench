@@ -14,6 +14,12 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Log
 
+### 2026-08-22 — skipped: stop-date passed
+- Budget guard (`.loop/budget.yaml`) tripped: today (2026-08-22) is after `stop_date:
+  "2026-08-10"`. Per `.loop/build-loop.md` Step 1.1, exiting without doing any build work —
+  no issue/PR opened this firing. Renan should update `stop_date` (and review `runs_by_day`)
+  in `.loop/budget.yaml` to resume the loop.
+
 ### 2026-08-10 — Unit 3.2: 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks
 - Reconciled stale state: `3.1` (PR #46) had already merged to `main` (verified the merge
   commit's CI run is green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
