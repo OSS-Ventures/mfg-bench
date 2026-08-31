@@ -4,15 +4,55 @@ The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
 - **Phase:** 3 (Family B — source-grounded closed-form tasks) — in progress.
-- **Reconciled:** `3.1` (PR #46) had already merged to `main` (merge commit confirmed, CI run
-  green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
-- **In flight:** `3.2 — 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks` — implemented,
-  tested locally (2149 passed), PR being opened this firing.
-- **Next unit (after 3.2 merges):** `3.3 — FMEA S/O/D scale reasoning closed-form tasks`
-  (Family B, source-grounded), completing Phase 3.
-- **Blockers:** none known.
+- **Reconciled:** `3.2` (PR #48, merged 2026-08-10, merge commit `b2e5d4a`) had already merged
+  to `main` but the roadmap checkbox was left at `[~]` — fixed to `[x]` now. This completes
+  everything Phase 3 has built so far (3.1, 3.2); `3.3` remains unbuilt.
+- **Next unit:** `3.3 — FMEA S/O/D scale reasoning closed-form tasks` (Family B, source-grounded,
+  completes Phase 3) — **not started**. No `claude/` unit work has landed on `main` since
+  2026-08-10: every firing from 2026-08-11 through today (2026-08-31, 21 days, ~20+ firings) has
+  tripped the budget guard (`stop_date: "2026-08-10"` in `.loop/budget.yaml`) before unit
+  selection and exited per Step 1.1, each pushing a same-shaped reconciliation note to its own
+  `claude/loop-log-<date>` branch (2026-08-11 .. 2026-08-28, now also 2026-08-31) that — by the
+  guard's own instructions ("do not open an issue or PR") — never merges back to `main`, so the
+  same stale roadmap checkbox keeps getting rediscovered and "fixed" on a new throwaway branch
+  each time without ever landing. This firing's PushNotification flags that loop to Renan
+  directly rather than trusting a 22nd loop-log branch to be noticed.
+- **Blockers:** `.loop/budget.yaml`'s `stop_date: "2026-08-10"` is 21 days in the past as of this
+  firing — the loop will keep exiting without building until `stop_date` is extended (or
+  `runs_by_day`/`enabled` otherwise adjusted) by Renan. The one prior extension, PR #24
+  (`2026-08-05` → `2026-08-10`), *was* merged (verified directly via `pull_request_read`,
+  `merged: true`, merged by `renan-devil` on 2026-08-03) — a previous firing's 2026-08-28 log
+  entry claiming PR #24 "was closed without merging" was incorrect; noting the correction here
+  since that entry is on an unmerged branch and won't otherwise be seen.
 
 ## Log
+
+### 2026-08-31 — Skipped: stop_date passed (budget guard)
+- Step 1 guard checks, in order: (1) budget guard — `.loop/budget.yaml` has `stop_date:
+  "2026-08-10"`, which is before today (2026-08-31), so this guard trips immediately per
+  `build-loop.md` Step 1.1. No unit was selected, no issue/PR opened, no new unit-branch work
+  done.
+- Reconciled stale bookkeeping left over from the last unit that actually merged: PR #48
+  (unit 3.2) merged to `main` on 2026-08-10 (head `b2e5d4a` is the PR #48 merge commit, confirmed
+  via `pull_request_read`) but `docs/roadmap.md` still showed `3.2` as `[~]` — flipped to `[x]`.
+  Confirmed no open `claude/` PR exists (`list_pull_requests` state=open returns empty), so the
+  concurrency guard has nothing to act on either.
+- Also corrected a factual error carried in the 2026-08-28 loop-log entry: it stated PR #24 (the
+  prior `stop_date` extension) "was closed without merging." Checked directly via
+  `pull_request_read` — PR #24 is `merged: true`, `merged_by: renan-devil`, `merged_at:
+  2026-08-03T11:57:49Z`. It extended `stop_date` from `2026-08-05` to `2026-08-10`; no further
+  extension PR has been opened since. (Note for future firings: `list_pull_requests`'s `merged`
+  field returned `false` for every closed PR checked here, including PR #24 and PR #48, both of
+  which `pull_request_read`'s `get` method confirms are actually merged — that field appears
+  unreliable on this server; use `pull_request_read` `get` for merge-status truth.)
+- This note + the roadmap checkbox fix were pushed to `claude/loop-log-2026-08-31` (not `main`,
+  not a unit branch) via the GitHub MCP tools, per the budget guard's own instructions ("push to
+  a `claude/loop-log-<date>` branch ... do not open an issue or PR").
+- **Action needed from Renan:** bump `stop_date` in `.loop/budget.yaml` (and review
+  `runs_by_day`) to resume the loop; unit `3.3` is queued and ready to be picked up by the next
+  firing once the guard passes. Sent a push notification this firing since 21 days of stalled
+  firings is exactly the kind of thing worth surfacing directly rather than leaving in another
+  branch nobody merges.
 
 ### 2026-08-10 — Unit 3.2: 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks
 - Reconciled stale state: `3.1` (PR #46) had already merged to `main` (verified the merge
