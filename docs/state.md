@@ -899,3 +899,8 @@ The autonomous loop appends here every iteration. Newest entries on top.
   schemas, base interface stubs (`generators/base.py`, `scorers/base.py`,
   `harness/adapters/base.py`, `harness/run.py`, `simulator/engine.py`), CI workflow, README.
 - No benchmark units built yet — Phase 0 (unit 0.1) is the loop's first task.
+
+### 2026-09-01 — skipped: stop-date guard tripped
+- `.loop/budget.yaml` sets `stop_date: "2026-08-10"`; today (2026-09-01) is past it. Per
+  Step 1's budget guard, exited cleanly without starting any build work — no issue/PR opened.
+  Renan needs to bump `stop_date` (and review `runs_by_day`) to re-arm the loop.
