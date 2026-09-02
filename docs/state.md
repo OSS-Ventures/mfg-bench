@@ -3,16 +3,26 @@
 The autonomous loop appends here every iteration. Newest entries on top.
 
 ## Current status
-- **Phase:** 3 (Family B — source-grounded closed-form tasks) — in progress.
-- **Reconciled:** `3.1` (PR #46) had already merged to `main` (merge commit confirmed, CI run
-  green) but the roadmap checkbox was left at `[~]` — fixed to `[x]` now.
-- **In flight:** `3.2 — 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks` — implemented,
-  tested locally (2149 passed), PR being opened this firing.
-- **Next unit (after 3.2 merges):** `3.3 — FMEA S/O/D scale reasoning closed-form tasks`
-  (Family B, source-grounded), completing Phase 3.
-- **Blockers:** none known.
+- **Phase:** 3 (Family B — source-grounded closed-form tasks) — paused.
+- **Budget guard tripped:** `.loop/budget.yaml`'s `stop_date` is `2026-08-10`; this firing's
+  date is past it, so per `.loop/build-loop.md` Step 1.1 no build work was done this firing
+  (guard checked and confirmed before any other step). Renan needs to bump `stop_date` (and
+  review `max_runs_per_day`/`runs_by_day`) to resume the loop.
+- **`3.2` confirmed merged:** PR #48 (`claude/lean-waste-smed-5s-kanban`) is merged to `main`
+  (`b2e5d4a`); the roadmap checkbox is still `[~]` and should be flipped to `[x]` by the next
+  firing that actually builds (reconciliation is normally folded into that firing's guard step,
+  not done separately by a skipped firing).
+- **Next unit (once resumed):** `3.3 — FMEA S/O/D scale reasoning closed-form tasks` (Family B,
+  source-grounded), completing Phase 3.
+- **Blockers:** `stop_date` in `.loop/budget.yaml` needs to be extended by Renan.
 
 ## Log
+
+### 2026-09-02 — Skipped: budget/stop-date guard
+- Guard check (Step 1.1): `.loop/budget.yaml` `stop_date: "2026-08-10"` is in the past relative
+  to this firing's date (2026-09-02). Per `.loop/build-loop.md`, exited without doing any build
+  work — no issue/PR opened. Noted here per the guard's instructions; `stop_date` needs to be
+  extended before the loop can resume.
 
 ### 2026-08-10 — Unit 3.2: 7/8 wastes, SMED / 5S / kanban sizing closed-form tasks
 - Reconciled stale state: `3.1` (PR #46) had already merged to `main` (verified the merge
